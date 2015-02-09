@@ -1,7 +1,6 @@
 #pragma once
 
 #include "vmsFileUtil.h"
-#include "misc/vmsAvUtil.h"
 #include <TlHelp32.h>
 #include <ShellAPI.h>
 
@@ -247,7 +246,7 @@ public:
 
 		auto tss_s = tss.str (); tss_s.push_back (0);
 
-		BOOL bOK = vmsAvUtil::CreateProcess (nullptr, &tss_s.front (),
+		BOOL bOK = CreateProcess (nullptr, &tss_s.front (),
 			NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE, NULL, NULL, &si, &pi);
 
 		if (!bOK)
@@ -266,7 +265,7 @@ public:
 					tstrCmdLine += _T ("\" ");
 					tstrCmdLine += m_tstrArgs;
 
-					bOK = vmsAvUtil::CreateProcess (NULL, (LPTSTR)tstrCmdLine.c_str (),
+					bOK = CreateProcess (NULL, (LPTSTR)tstrCmdLine.c_str (),
 						NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE, NULL, NULL, &si, &pi);
 				}
 				else

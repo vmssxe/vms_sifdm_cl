@@ -1,6 +1,5 @@
 #pragma once
 #include "vmsErrorSource.h"
-#include "../data/GentlePercentCodec.h"
 class vmsErrorSourceBinaryData : 
 	public vmsErrorSource
 {

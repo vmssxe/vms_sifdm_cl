@@ -1,5 +1,4 @@
 #pragma once
-#include "../time/vmsRunTimer.h"
 // vmsAppHangDetector's thread_state::update must be periodically called by a monitoring thread
 // if thread do not call it during some time interval - it is treated as "hunged".
 class vmsAppHangDetector :

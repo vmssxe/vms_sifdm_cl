@@ -2,7 +2,6 @@
 
 #include "vmsSerializer.h"
 #include "../vmsThreadSafe.h"
-#include "../vmsCreatesThreads.h"
 
 class vmsSerializableObjectsMgr : public vmsThreadSafe,
 	public vmsCreatesThreads

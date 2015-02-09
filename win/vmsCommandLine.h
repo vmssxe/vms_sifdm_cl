@@ -221,7 +221,7 @@ public:
 	// dwFlags - ORed combination of ExecutionFlags
 	bool Execute(DWORD dwFlags = 0, LPDWORD pdwProcessExitCode = nullptr, 
 		HANDLE *phProcess = nullptr, vmsError *error = nullptr,
-		std::function <bool()> abort_waiting = {}) const
+		std::function <bool()> abort_waiting = std::function <bool()> ()) const
 	{
 		if (isEmpty ())
 		{

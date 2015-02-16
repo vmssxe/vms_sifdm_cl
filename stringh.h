@@ -93,6 +93,17 @@ inline std::string utf8FromWide (const std::wstring& wstr)
 	return (char*) ATL::CW2AEX <1000> (wstr.c_str (), CP_UTF8);
 }
 
+inline std::string stringFromTstring (const tstring& tstr)
+{
+	return utf8FromWide (tstr);
+}
+
+inline tstring tstringFromString (const std::string& str)
+{
+	return wideFromUtf8 (str);
+}
+
+
 template <class tString>
 inline int stringCompareN (const tString& str, typename tString::size_type pos, const tString& str2)
 {

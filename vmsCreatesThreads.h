@@ -52,7 +52,7 @@ public:
 			}
 			vmsAUTOLOCKSECTION_UNLOCK(m_csThreads);
 
-			WaitForSingleObject(spHandle.get(), INFINITE);
+			WaitForSingleObject(spHandle->getHandle (), INFINITE);
 			
 			{
 				// thread could be terminated

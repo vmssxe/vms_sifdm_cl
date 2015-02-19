@@ -53,6 +53,16 @@ public:
 			vmsAUTOLOCKSECTION_UNLOCK(m_csThreads);
 
 			WaitForSingleObject(spHandle.get(), INFINITE);
+			
+			{
+				// thread could be terminated
+				vmsAUTOLOCKSECTION(m_csThreads);
+				if (!m_vThreads.empty () && m_vThreads.begin ()->first == threadId)
+				{
+					delete thread;
+					m_vThreads.erase (m_vThreads.begin ());
+				}
+			}
 		}
 	}
 

@@ -1,3 +1,5 @@
+/* Deprecated. Should not be used in a new code. */
+
 #pragma once
 #include <map>
 #include "vmsThread.h"

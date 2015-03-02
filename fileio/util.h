@@ -195,3 +195,12 @@ inline std::wstring vmsGenerateUniqueFileName(
 
 	return (wstr + wstrExt);
 }
+
+
+inline tstring vmsGetTempPath ()
+{
+	TCHAR path [MAX_PATH] = _T ("");
+	GetTempPath (MAX_PATH, path);
+	assert (*path);
+	return path;
+}

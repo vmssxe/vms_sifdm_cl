@@ -217,6 +217,7 @@ public:
 		SearchPathIfRequired		= 1 << 2,
 		WaitForChildCompletion		= 1 << 3, // valid only if WaitForCompletion is specified also
 		RunAssociatedAppIfNotExe	= 1 << 4,
+		RunElevated					= 1 << 5,
 	};
 	// dwFlags - ORed combination of ExecutionFlags
 	bool Execute(DWORD dwFlags = 0, LPDWORD pdwProcessExitCode = nullptr, 
@@ -230,24 +231,15 @@ public:
 			return false;
 		}
 
-		STARTUPINFO si;
-		PROCESS_INFORMATION pi;
-
-		ZeroMemory (&si, sizeof (si));
-		si.cb = sizeof (si);
-		ZeroMemory (&pi, sizeof (pi));
-
+		HANDLE hProcess = nullptr;
+		DWORD dwProcessId = 0;
+		BOOL bOK;
 		tstring tstrExe = m_tstrExe;
 
-		tstringstream tss;
-		tss << _T ("\"") << m_tstrExe << _T ("\"");
-		if (!m_tstrArgs.empty ())
-			tss << _T (" ") << m_tstrArgs;
-
-		auto tss_s = tss.str (); tss_s.push_back (0);
-
-		BOOL bOK = CreateProcess (nullptr, &tss_s.front (),
-			NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE, NULL, NULL, &si, &pi);
+		if (dwFlags & RunElevated)
+			bOK = RunProcessElevated (tstrExe, m_tstrArgs, hProcess, dwProcessId);
+		else
+			bOK = RunProcessNormal (tstrExe, m_tstrArgs, hProcess, dwProcessId);
 
 		if (!bOK)
 		{
@@ -260,13 +252,11 @@ public:
 					TCHAR tszExe [MAX_PATH] = _T ("");
 					SearchPath (NULL, m_tstrExe.c_str (), _T (".exe"), MAX_PATH, tszExe, &ptszTmp);
 					tstrExe = tszExe;
-					tstring tstrCmdLine = _T ("\"");
-					tstrCmdLine += tszExe;
-					tstrCmdLine += _T ("\" ");
-					tstrCmdLine += m_tstrArgs;
 
-					bOK = CreateProcess (NULL, (LPTSTR)tstrCmdLine.c_str (),
-						NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE, NULL, NULL, &si, &pi);
+					if (dwFlags & RunElevated)
+						bOK = RunProcessElevated (tstrExe, m_tstrArgs, hProcess, dwProcessId);
+					else
+						bOK = RunProcessNormal (tstrExe, m_tstrArgs, hProcess, dwProcessId);
 				}
 				else
 				{
@@ -283,19 +273,7 @@ public:
 			{
 				if (dwFlags & RunElevatedIfRequired)
 				{
-					SHELLEXECUTEINFO sei = {0};
-					sei.cbSize = sizeof (sei);
-					sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS;
-					sei.lpVerb = _T ("runas");
-					sei.lpFile = tstrExe.c_str ();
-					sei.lpParameters = m_tstrArgs.c_str ();
-					sei.nShow = SW_SHOWNORMAL;
-					bOK = ShellExecuteEx (&sei);
-					if (bOK)
-					{
-						pi.hProcess = sei.hProcess;
-						pi.dwProcessId = GetProcessId (pi.hProcess);
-					}
+					bOK = RunProcessElevated (tstrExe, m_tstrArgs, hProcess, dwProcessId);
 				}
 				else
 				{
@@ -315,8 +293,8 @@ public:
 				bOK = ShellExecuteEx (&sei);
 				if (bOK)
 				{
-					pi.hProcess = sei.hProcess;
-					pi.dwProcessId = GetProcessId (pi.hProcess);
+					hProcess = sei.hProcess;
+					dwProcessId = GetProcessId (hProcess);
 				}
 			}
 		}
@@ -329,21 +307,21 @@ public:
 		}
 
 		if (phProcess)
-			*phProcess = pi.hProcess;
+			*phProcess = hProcess;
 
 		if ((dwFlags & WaitForCompletion) || pdwProcessExitCode)
 		{
 			if (!abort_waiting)
 			{
-				WaitForSingleObject (pi.hProcess, INFINITE);
+				WaitForSingleObject (hProcess, INFINITE);
 			}
 			else
 			{
-				while (WaitForSingleObject (pi.hProcess, 100) == WAIT_TIMEOUT)
+				while (WaitForSingleObject (hProcess, 100) == WAIT_TIMEOUT)
 				{
 					if (abort_waiting ())
 					{
-						CloseHandle (pi.hProcess);
+						CloseHandle (hProcess);
 						return true;
 					}
 				}					
@@ -358,7 +336,7 @@ public:
 					if (Process32First (hSnapshot, &pe)) 
 					while (Process32Next (hSnapshot, &pe))
 					{
-						if (pe.th32ParentProcessID == pi.dwProcessId)
+						if (pe.th32ParentProcessID == dwProcessId)
 						{
 							HANDLE h = OpenProcess (SYNCHRONIZE, FALSE, pe.th32ProcessID);
 							if (h)
@@ -373,7 +351,7 @@ public:
 									{
 										if (abort_waiting ())
 										{
-											CloseHandle (pi.hProcess);
+											CloseHandle (hProcess);
 											CloseHandle (h);
 											return true;
 										}
@@ -391,19 +369,19 @@ public:
 			if (pdwProcessExitCode)
 			{
 				*pdwProcessExitCode = 0;
-				if (FALSE == GetExitCodeProcess (pi.hProcess, pdwProcessExitCode))
+				if (FALSE == GetExitCodeProcess (hProcess, pdwProcessExitCode))
 				{
 					if (error)
 						*error = windows_error::last_error ();
 					if (!phProcess)
-						CloseHandle (pi.hProcess);
+						CloseHandle (hProcess);
 					return false;
 				}
 			}
 		}
 
 		if (!phProcess)
-			CloseHandle (pi.hProcess);
+			CloseHandle (hProcess);
 
 		return true;
 	}
@@ -464,5 +442,54 @@ protected:
 
 	tstring m_tstrArgs;
 	tstring m_tstrExe;
+
+protected:
+	static bool RunProcessElevated (const tstring& exe, const tstring& args, 
+		HANDLE& hProcess, DWORD &dwProcessId)
+	{
+		SHELLEXECUTEINFO sei = {0};
+		sei.cbSize = sizeof (sei);
+		sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS;
+		sei.lpVerb = _T ("runas");
+		sei.lpFile = exe.c_str ();
+		sei.lpParameters = args.c_str ();
+		sei.nShow = SW_SHOWNORMAL;
+		if (!ShellExecuteEx (&sei))
+			return false;
+		hProcess = sei.hProcess;
+		dwProcessId = GetProcessId (hProcess);
+		return true;
+	}
+
+	static bool RunProcessNormal (const tstring& exe, const tstring& args, 
+		HANDLE& hProcess, DWORD &dwProcessId)
+	{
+		STARTUPINFO si;
+		PROCESS_INFORMATION pi;
+
+		ZeroMemory (&si, sizeof (si));
+		si.cb = sizeof (si);
+		ZeroMemory (&pi, sizeof (pi));
+
+		tstringstream tss;
+		tss << _T ("\"") << exe << _T ("\"");
+		if (!args.empty ())
+			tss << _T (" ") << args;
+
+		auto tss_s = tss.str (); tss_s.push_back (0);
+
+		if (!CreateProcess (nullptr, &tss_s.front (),
+			NULL, NULL, FALSE, CREATE_DEFAULT_ERROR_MODE, NULL, NULL, &si, &pi))
+		{
+			return false;
+		}
+
+		hProcess = pi.hProcess;
+		dwProcessId = pi.dwProcessId;
+
+		CloseHandle (pi.hThread);
+
+		return true;
+	}
 };
 

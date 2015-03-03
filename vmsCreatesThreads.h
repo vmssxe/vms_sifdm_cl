@@ -12,6 +12,14 @@ public:
 		m_hevShuttingDown = CreateEvent(NULL, TRUE, FALSE, NULL);
 	}
 
+	virtual ~vmsCreatesThreads()
+	{
+		// derived class must call Shutdown(true) in its destructor to terminate all the threads
+		assert(m_vThreads.empty());
+		assert(m_vThreadsObsolete.empty());
+		CloseHandle(m_hevShuttingDown);
+	}
+
 	virtual void Shutdown(bool bWaitThreadsForShutdown = false)
 	{
 		SetEvent(m_hevShuttingDown);
@@ -96,21 +104,13 @@ public:
 		return m_vThreads.size () + m_vThreadsObsolete.size ();
 	}
 
-	virtual ~vmsCreatesThreads()
-	{
-		// derived class must call Shutdown(true) in its destructor to terminate all the threads
-		assert(m_vThreads.empty());
-		assert(m_vThreadsObsolete.empty());
-		CloseHandle(m_hevShuttingDown);
-	}
-
-
 // -----
 // called by a thread automatically
 public:
 	void onThreadCreated(vmsThread *thread)
 	{
 		DWORD threadId = GetCurrentThreadId();
+
 		vmsAUTOLOCKSECTION(m_csThreads);
 		auto res = m_vThreads.insert(std::make_pair(threadId, thread));
 		assert(res.second);
@@ -147,14 +147,14 @@ protected:
 
 protected:
 	// can be called to create "a standard thread"
-	vmsWinHandle::tSP CreateThread(unsigned(__stdcall *start_address)(vmsCreatesThreads*))
+	vmsWinHandle::tSP CreateThread(unsigned(__stdcall *start_address)(vmsCreatesThreads*), char *threadName = nullptr)
 	{
-		vmsThread *thread = new vmsThread(this, (unsigned(__stdcall *)(void*))start_address, this);
+		vmsThread *thread = new vmsThread(this, (unsigned(__stdcall *)(void*))start_address, this, threadName);
 		return thread->handle();
 	}
-	vmsWinHandle::tSP CreateThread(unsigned(__stdcall *start_address)(void*), void* pvParam)
+	vmsWinHandle::tSP CreateThread(unsigned(__stdcall *start_address)(void*), void* pvParam, char *threadName = nullptr)
 	{
-		vmsThread *thread = new vmsThread(this, start_address, pvParam);
+		vmsThread *thread = new vmsThread(this, start_address, pvParam, threadName);
 		return thread->handle();
 	}
 
@@ -176,8 +176,11 @@ protected:
 static unsigned _stdcall ThreadEntryPoint::threadMain(void *pv)
 {
 	std::unique_ptr<ThreadEntryPoint::ThreadParams> params(reinterpret_cast <ThreadEntryPoint::ThreadParams*>(pv));
+
 	params->threadOwner->onThreadCreated(params->thread);
+	vmsThread::setThreadName(-1, params->name);
 	(*params->routine)(params->routineParams);
 	params->threadOwner->onThreadTerminating();
+
 	return 0;
 }

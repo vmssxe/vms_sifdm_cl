@@ -90,6 +90,27 @@ inline BOOL vmsBuildPathToFile (LPCTSTR pszFileName)
 }
 
 
+inline void vmsTrimPath(/* out */ std::wstring& wstrPath)
+{
+	while (!wstrPath.empty() && (wstrPath.back() == L'\\' || wstrPath.back() == L'/'))
+		wstrPath.erase(wstrPath.end() - 1);
+}
+
+
+inline std::wstring vmsAppendPath(const std::wstring& wstrPathFirst, const std::wstring& wstrPathSecond)
+{
+	std::wstring ret(wstrPathFirst);
+	if (!wstrPathSecond.empty())
+	{
+		vmsTrimPath(ret);
+		if (wstrPathSecond.front() != L'\\' && wstrPathSecond.front() != L'/')
+			ret += L'\\';
+		ret += wstrPathSecond;
+	}
+	return ret;
+}
+
+
 // returns true for existing folder too
 inline bool vmsFileExists(const std::wstring& wstrFile)
 {

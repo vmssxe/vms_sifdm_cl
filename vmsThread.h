@@ -45,7 +45,7 @@ public:
 		m_spHandle = std::make_shared<vmsWinHandle>((HANDLE)_beginthreadex(NULL, 0, ThreadEntryPoint::threadMain, params, 0, NULL));
 	}
 
-	virtual ~vmsThread() = default;
+	virtual ~vmsThread() {}
 
 	vmsWinHandle::tSP handle() const
 	{

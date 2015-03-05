@@ -1,5 +1,5 @@
 #pragma once
-#include "../win/vmsBinaryFileVersionInfo.h"
+#include "../../vms_sifdm_cl_private/win/vmsBinaryFileVersionInfo.h"
 class vmsRunningAppVersionInfo
 {
 public:

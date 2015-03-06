@@ -1,5 +1,4 @@
 #pragma once
-#include <DbgHelp.h>
 #include <csignal>
 #include <fstream>
 #include "../vmsExceptionLog.h"

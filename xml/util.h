@@ -1,0 +1,13 @@
+#pragma once
+
+template <class TObject>
+std::string vmsXmlSerializeObject (TObject& obj, const std::wstring& root_node_name, unsigned flags = 0)
+{
+	auto ss = std::make_shared <std::stringstream> ();
+	vmsXmlSerializationOutputStream xml (root_node_name);
+	xml.BindToStream (ss);
+	if (!obj.Serialize (&vmsSerializationIoStream (&xml), flags))
+		return std::string ();
+	xml.Flush ();
+	return ss->str ();
+}

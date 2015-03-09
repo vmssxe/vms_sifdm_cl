@@ -225,3 +225,56 @@ inline tstring vmsGetTempPath ()
 	assert (*path);
 	return path;
 }
+
+
+inline tstring vmsGetFileSystemName (const tstring& rootPathName)
+{
+	TCHAR fs [MAX_PATH+1] = _T("");
+	if (!::GetVolumeInformation (rootPathName.c_str (), nullptr, 0, 
+			nullptr, nullptr, nullptr, fs, _countof (fs)))
+	{
+		return tstring ();
+	}
+	return fs;
+}
+
+
+inline uint64_t vmsGetMaximumFileSize (const tstring &fileSystemName)
+{
+	if (fileSystemName == _T("FAT12"))
+		return 8*1024*1024;
+
+	if (fileSystemName == _T("FAT16"))
+		return UINT32_MAX;
+
+	if (fileSystemName == _T("FAT32"))
+		return UINT32_MAX;
+
+	if (fileSystemName == _T("NTFS"))
+		return (256*1024*1024*1024*1024ULL - 64*1024);
+
+	return 0; // unknown
+}
+
+
+inline bool vmsCheckMaximumFileSize (const tstring &path, uint64_t filesize)
+{
+	tstring rootPath = path;
+	assert (rootPath.length () >= 3);
+	if (rootPath.length () < 3)
+		return true;
+
+	rootPath.erase (rootPath.begin () + 3, rootPath.end ());
+
+	auto fsname = vmsGetFileSystemName (rootPath);
+	assert (!fsname.empty ());
+	if (fsname.empty ())
+		return true;
+
+	auto maxsize = vmsGetMaximumFileSize (fsname);
+	assert (maxsize);
+	if (!maxsize)
+		return true;
+
+	return filesize <= maxsize;
+}

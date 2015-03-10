@@ -251,7 +251,7 @@ inline uint64_t vmsGetMaximumFileSize (const tstring &fileSystemName)
 		return UINT32_MAX;
 
 	if (fileSystemName == _T("NTFS"))
-		return (256*1024*1024*1024*1024ULL - 64*1024);
+		return (256ULL*1024*1024*1024*1024 - 64*1024);
 
 	return 0; // unknown
 }

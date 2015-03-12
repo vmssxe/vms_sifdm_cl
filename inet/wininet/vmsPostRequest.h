@@ -8,6 +8,16 @@ class vmsPostRequest :
 	public vmsErrorCodeProvider
 {
 public:
+	struct WinInetFnsOverride
+	{
+		BOOL (WINAPI *pfnHttpSendRequestA)(HINTERNET, LPCSTR, DWORD, LPVOID, DWORD);
+		BOOL (WINAPI *pfnInternetReadFile)(HINTERNET, LPVOID, DWORD, LPDWORD);
+		WinInetFnsOverride () : 
+			pfnHttpSendRequestA (HttpSendRequestA), 
+			pfnInternetReadFile (InternetReadFile) {}
+	};
+
+public:
 	void Close()
 	{
 		if (m_hRequest)
@@ -41,7 +51,7 @@ public:
 			return FALSE;
 		}
 		
-		if (!InternetReadFile (m_hRequest, pData, dwToRead, pdwRead))
+		if (!m_wiFns.pfnInternetReadFile (m_hRequest, pData, dwToRead, pdwRead))
 		{
 			m_last_error = windows_error::last_error ();
 			return false;
@@ -64,7 +74,9 @@ public:
 		return Send (ptszServer, ptszFilePath, str.c_str (), (DWORD)str.length (), _T ("application/x-www-form-urlencoded"), pstrResponse);
 	}
 
-	BOOL SendMultipart (LPCTSTR ptszServer, LPCTSTR ptszFilePath, std::string *pstrResponse = NULL)
+	BOOL SendMultipart (LPCTSTR ptszServer, LPCTSTR ptszFilePath, 
+		std::string *pstrResponse = nullptr,
+		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
 	{
 		m_last_error.clear ();
 
@@ -80,7 +92,7 @@ public:
 		return FALSE;
 	}
 
-	if (!InitWinInetHandlesForRequest (ptszServer, ptszFilePath))
+	if (!InitWinInetHandlesForRequest (ptszServer, ptszFilePath, uPort))
 		return FALSE;
 
 	//ApplyProxyAuth (m_hRequest);
@@ -145,7 +157,7 @@ Content-Type: application/octet-stream\r\n\r\n",
 	ADD_STRING_TO_SEND ("--\r\n");
 
 	assert (pbSendDataPos-pbSendData == buffs.dwBufferTotal);
-	if (FALSE == HttpSendRequestA (m_hRequest, buffs.lpcszHeader, buffs.dwHeadersLength, pbSendData, (DWORD)(pbSendDataPos-pbSendData)))
+	if (FALSE == m_wiFns.pfnHttpSendRequestA (m_hRequest, buffs.lpcszHeader, buffs.dwHeadersLength, pbSendData, (DWORD)(pbSendDataPos-pbSendData)))
 	{
 		m_last_error = windows_error::last_error ();
 		return FALSE;
@@ -162,7 +174,7 @@ Content-Type: application/octet-stream\r\n\r\n",
 		char sz [1025];
 		DWORD dw;
 		BOOL ok;
-		while ((ok = InternetReadFile (m_hRequest, sz, sizeof (sz) - 1, &dw)) && dw != 0)
+		while ((ok = m_wiFns.pfnInternetReadFile (m_hRequest, sz, sizeof (sz) - 1, &dw)) && dw != 0)
 		{
 			sz [dw] = 0;
 			(*pstrResponse) += sz;
@@ -205,11 +217,13 @@ Content-Type: application/octet-stream\r\n\r\n",
 		m_vParts.clear ();
 	}
 
-	BOOL Send (LPCTSTR ptszServer, LPCTSTR ptszFilePath, LPCVOID pvData, DWORD dwDataSize, LPCTSTR ptszContentType, std::string *pstrResponse)
+	BOOL Send (LPCTSTR ptszServer, LPCTSTR ptszFilePath, LPCVOID pvData, 
+		DWORD dwDataSize, LPCTSTR ptszContentType, std::string *pstrResponse,
+		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
 	{
 		m_last_error.clear ();
 
-		if (!InitWinInetHandlesForRequest (ptszServer, ptszFilePath))
+		if (!InitWinInetHandlesForRequest (ptszServer, ptszFilePath, uPort))
 			return FALSE;
 
 		//ApplyProxyAuth (m_hRequest);
@@ -223,7 +237,7 @@ Content-Type: application/octet-stream\r\n\r\n",
 			HttpAddRequestHeaders (m_hRequest, tstrContentTypeHdr.c_str (), (DWORD)tstrContentTypeHdr.length (), HTTP_ADDREQ_FLAG_ADD | HTTP_ADDREQ_FLAG_REPLACE);
 		}
 
-		if (FALSE == HttpSendRequestA (m_hRequest, NULL, 0, (LPVOID)pvData, dwDataSize))
+		if (FALSE == m_wiFns.pfnHttpSendRequestA (m_hRequest, NULL, 0, (LPVOID)pvData, dwDataSize))
 		{
 			m_last_error = windows_error::last_error ();
 			return FALSE;
@@ -238,7 +252,7 @@ Content-Type: application/octet-stream\r\n\r\n",
 			char sz[1025];
 			DWORD dw;
 			BOOL ok;
-			while ((ok = InternetReadFile (m_hRequest, sz, sizeof (sz) - 1, &dw)) && dw != 0)
+			while ((ok = m_wiFns.pfnInternetReadFile (m_hRequest, sz, sizeof (sz) - 1, &dw)) && dw != 0)
 			{
 				sz[dw] = 0;
 				(*pstrResponse) += sz;
@@ -309,7 +323,8 @@ protected:
 		InternetSetOption (hInet, INTERNET_OPTION_CONNECT_TIMEOUT, &uTimeout, sizeof (uTimeout));
 	}
 
-	bool InitWinInetHandlesForRequest (LPCTSTR ptszServer, LPCTSTR ptszFilePath)
+	bool InitWinInetHandlesForRequest (LPCTSTR ptszServer, LPCTSTR ptszFilePath,
+		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
 	{
 		Close ();
 
@@ -327,7 +342,7 @@ protected:
 
 		PostInitWinInetHandle (m_hInet);
 
-		m_hConnect = InternetConnect (m_hInet, ptszServer, INTERNET_DEFAULT_HTTP_PORT,
+		m_hConnect = InternetConnect (m_hInet, ptszServer, uPort,
 			NULL, NULL, INTERNET_SERVICE_HTTP, 0, NULL);
 		if (m_hConnect == NULL)
 		{
@@ -370,6 +385,7 @@ public:
 
 protected:
 	vmsError m_last_error;
+	WinInetFnsOverride m_wiFns;
 
 protected:
 	bool status_code (DWORD& code) const

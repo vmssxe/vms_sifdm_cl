@@ -95,12 +95,20 @@ inline std::string utf8FromWide (const std::wstring& wstr)
 
 inline std::string stringFromTstring (const tstring& tstr)
 {
+#ifdef UNICODE
 	return utf8FromWide (tstr);
+#else
+	return tstr;
+#endif
 }
 
 inline tstring tstringFromString (const std::string& str)
 {
+#ifdef UNICODE
 	return wideFromUtf8 (str);
+#else
+	return str;
+#endif
 }
 
 

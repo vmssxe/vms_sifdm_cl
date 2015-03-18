@@ -2,6 +2,11 @@
 class vmsExeProgramData
 {
 public:
+	static std::string construct_label (const std::string& label_base)
+	{
+		return std::string ("###") + label_base + std::string ("###");
+	}
+
 	vmsExeProgramData(const std::string& label, unsigned max_size = 100*1024, const std::wstring& exe_path = vmsGetModuleFileName ())
 	{
 		assert (!exe_path.empty ());
@@ -33,11 +38,6 @@ public:
 		auto itLabelEnd = std::search (itLabelBegin, data.end (), label.begin (), label.end ());
 
 		m_data.assign (itLabelBegin, itLabelEnd);
-	}
-
-	static std::string construct_label (const std::string& label_base)
-	{
-		return std::string ("###") + label_base + std::string ("###");
 	}
 
 public:

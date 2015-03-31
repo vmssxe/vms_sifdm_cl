@@ -38,7 +38,7 @@ public:
 
 		~thread_state ()
 		{
-			RaiseEvent (0);
+			RaiseEvent ((unsigned)0);
 		}
 
 		void update ()

@@ -44,19 +44,30 @@ protected:
 class vmsTmpDirName
 {
 public:
-	vmsTmpDirName (bool bDeleteDirWithContents = true) : 
-	  m_bDeleteDirWithContents (bDeleteDirWithContents)
+	vmsTmpDirName (bool bDeleteDirWithContents = true, 
+		const tstring &tmpDirName = _T("")) : 
+		m_bDeleteDirWithContents (bDeleteDirWithContents)
 	{
 		WCHAR wsz [MAX_PATH] = L"";
 		GetTempPathW (_countof (wsz), wsz);
-		GUID guid;
-		if (FAILED (CoCreateGuid (&guid)))
-			return;
-		wchar_t wszGuid [100] = L"";
-		StringFromGUID2 (guid, wszGuid, _countof (wszGuid));
 		wcscat (wsz, L"\\");
-		wcscat (wsz, wszGuid);
+
+		if (tmpDirName.empty ())
+		{
+			GUID guid;
+			if (FAILED (CoCreateGuid (&guid)))
+				return;
+			wchar_t wszGuid [100] = L"";
+			StringFromGUID2 (guid, wszGuid, _countof (wszGuid));
+			wcscat (wsz, wszGuid);
+		}
+		else
+		{
+			wcscat (wsz, tmpDirName.c_str ());
+		}
+		
 		CreateDirectoryW (wsz, NULL);
+
 		USES_CONVERSION;
 		m_tstrTmpDirName = W2CT (wsz);
 	}

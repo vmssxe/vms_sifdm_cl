@@ -130,7 +130,7 @@ public:
 	template <class TEnum>
 	static bool SerializeEnum (vmsSerializationIoStream *pStm, const std::wstring& name, TEnum &enVal, bool bOptional = false)
 	{
-		int i = enVal;
+		int i = (int)enVal;
 		if (!pStm->SerializeValueS (name.c_str (), i, !bOptional))
 			return false;
 		if (pStm->isInputStream ())

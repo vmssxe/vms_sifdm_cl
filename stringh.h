@@ -52,6 +52,42 @@ inline wchar_t * __cdecl strstri (const wchar_t * str1, const wchar_t * str2)
 
 }
 
+inline const char* strstrn (const char* pszSrc, const char* pszSrch, int lenSrc)
+{
+	assert (lenSrc > 0);
+	assert (pszSrch && *pszSrch != 0);
+	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
+		return nullptr;
+	int lSrch = strlen (pszSrch);
+	lenSrc -= lSrch;
+	while (lenSrc >= 0)
+	{
+		if (strncmp (pszSrc, pszSrch, lSrch) == 0)
+			return pszSrc;
+		pszSrc++;
+		lenSrc--;
+	}
+	return nullptr;
+}
+
+inline const char* strstrni (const char* pszSrc, const char* pszSrch, int lenSrc)
+{
+	assert (lenSrc > 0);
+	assert (pszSrch && *pszSrch != 0);
+	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
+		return nullptr;
+	int lSrch = strlen (pszSrch);
+	lenSrc -= lSrch;
+	while (lenSrc >= 0)
+	{
+		if (strnicmp (pszSrc, pszSrch, lSrch) == 0)
+			return pszSrc;
+		pszSrc++;
+		lenSrc--;
+	}
+	return nullptr;
+}
+
 template<class T> inline void stringReplace (T& str, const T& strSearch, const T& strReplace)
 {
 	const T::size_type str2Size (strReplace.size());

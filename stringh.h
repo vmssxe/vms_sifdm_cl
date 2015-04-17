@@ -1,5 +1,6 @@
 #pragma once
 #include <atlbase.h>
+#include <assert.h>
 
 inline char * __cdecl strstri (const char * str1, const char * str2)
 {

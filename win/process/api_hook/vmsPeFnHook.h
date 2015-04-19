@@ -12,6 +12,9 @@ public:
 		if (findFunctionIndexByName (pszImportingModuleName, pszTargetFuncName) != -1)
 			return true;
 
+		HMODULE hMainModule = GetModuleHandle (NULL);
+		HMODULE hThisModule = vmsGetThisModuleHandle ();
+
 		FunctionInfo fi;
 		fi.strImportingModuleName = pszImportingModuleName;
 		fi.hImportingModule = GetModuleHandleA (pszImportingModuleName);
@@ -26,17 +29,19 @@ public:
 
 		FunctionInfo &r_fi = m_vFunctions [m_vFunctions.size () - 1];
 
-		HMODULE hMainModule = GetModuleHandle (NULL);
-		FARPROC pfnOriginal = NULL;
 		FARPROC pfnTarget = vmsPeTools::GetProcAddress (r_fi.hImportingModule, pszTargetFuncName);
-		m_petools.ReplaceIATfunc (hMainModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &r_fi.pfnOriginal);
+		FARPROC pfnOriginal = NULL;
+		bool replaced = false;
+
+		if (m_petools.ReplaceIATfunc (hMainModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &r_fi.pfnOriginal))
+			replaced = true;
+		if (m_petools.ReplaceDIATfunc (hMainModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
+			replaced = true;
 
 		if (!r_fi.pfnOriginal)
 			r_fi.pfnOriginal = pfnTarget;
 
 		vmsAUTOLOCKSECTION_UNLOCK (m_csFunctions);
-
-		HMODULE hThisModule = vmsGetThisModuleHandle ();
 
 		// Get the list of modules in this process
 		CToolhelp th (TH32CS_SNAPMODULE, GetCurrentProcessId ());
@@ -46,13 +51,15 @@ public:
 		{
 			if (me.hModule != hThisModule && me.hModule != hMainModule)
 			{
-				FARPROC pfnOriginal = NULL;
-				m_petools.ReplaceIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal);
+				if (m_petools.ReplaceIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
+					replaced = true;
+				if (m_petools.ReplaceDIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
+					replaced = true;
 				//assert (r_fi.pfnOriginal == NULL || pfnOriginal == NULL || pfnOriginal == r_fi.pfnOriginal); // it can differ btw... but get some notification just in case...
 			}
 		}
 
-		return true;
+		return replaced;
 	}
 
 protected:

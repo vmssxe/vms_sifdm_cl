@@ -42,6 +42,91 @@ public:
 		return false;
 	}
 
+	bool ReplaceDIATfunc (HMODULE hTarget, LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnTarget, FARPROC pfnNew, FARPROC *ppfnOriginal)
+	{
+		// we need to call module's function instead of calling delayLoadHelper each time
+		// caller must provide its address (by loading module and getting the function's address) or
+		// we need to do it here (? ; don't think so, btw...)
+		assert (pfnTarget);
+		if (!pfnTarget)
+			return false;
+
+		PIMAGE_DOS_HEADER pDosHeader = PIMAGE_DOS_HEADER (hTarget);
+		PIMAGE_NT_HEADERS pNTHeaders = RvaToAddr (PIMAGE_NT_HEADERS, hTarget, pDosHeader->e_lfanew);
+
+		IMAGE_DATA_DIRECTORY &impDir = pNTHeaders->OptionalHeader.DataDirectory [IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT];
+
+		if (impDir.VirtualAddress == NULL || impDir.Size == 0)
+			return false;
+
+		FARPROC pfnOriginal = NULL;
+		bool replaced = false;
+
+		PIMAGE_DELAYLOAD_DESCRIPTOR importDesc = RvaToAddr (PIMAGE_DELAYLOAD_DESCRIPTOR, hTarget, impDir.VirtualAddress);
+
+		for (;;++importDesc)
+		{
+			auto offset = (importDesc->Attributes.AllAttributes & 1) ? 0 : pNTHeaders->OptionalHeader.ImageBase;
+			if (!importDesc->DllNameRVA || !importDesc->ImportAddressTableRVA || !importDesc->ImportAddressTableRVA)
+				break;
+
+			auto modName = RvaToAddr (LPCSTR, hTarget, importDesc->DllNameRVA - offset);
+			bool bSearchOnlyByAddr = _stricmp (modName, pszImportingModuleName) != 0;
+
+			PIMAGE_THUNK_DATA pNameThunk = RvaToAddr (PIMAGE_THUNK_DATA, hTarget, importDesc->ImportNameTableRVA - offset);
+			PIMAGE_THUNK_DATA pAddrThunk = RvaToAddr (PIMAGE_THUNK_DATA, hTarget, importDesc->ImportAddressTableRVA - offset);
+
+			for (; pNameThunk->u1.Ordinal; ++pNameThunk, ++pAddrThunk)
+			{
+				assert (pAddrThunk->u1.Ordinal);
+				if (!pAddrThunk->u1.Ordinal)
+					break;
+
+				bool bNeedToReplace = false;
+
+				if (!bSearchOnlyByAddr)
+				{
+					if (!(pNameThunk->u1.Ordinal & IMAGE_ORDINAL_FLAG))
+					{
+						PIMAGE_IMPORT_BY_NAME pName = RvaToAddr (PIMAGE_IMPORT_BY_NAME, hTarget, pNameThunk->u1.AddressOfData - offset);
+						assert (pName != NULL);
+						//LOG ("  module's function: %s", (LPCSTR)pName->Name);
+						if (!_stricmp ((LPCSTR)pName->Name, pszTargetFuncName))
+							bNeedToReplace = true;
+					}
+				}
+
+				if (!bNeedToReplace && pfnTarget && pAddrThunk->u1.Function == DWORD_PTR (pfnTarget))
+					bNeedToReplace = true;
+
+				if (bNeedToReplace)
+				{
+					if (!pfnOriginal)
+					{
+						auto pfn = (FARPROC)pAddrThunk->u1.Function;
+						// we need to check patching function's module here
+						// If it belongs to the target module - it's a delayLoadHelper
+						if (vmsModuleFromAddress (pfn) != hTarget)
+							pfnOriginal = pfn;
+					}
+					PROC* ppfn = (PROC*)&pAddrThunk->u1.Function;
+					DWORD dwDummy;
+					VirtualProtect (ppfn, sizeof (PROC), PAGE_EXECUTE_READWRITE, &dwDummy);
+					BOOL bOK = WriteProcessMemory (GetCurrentProcess (), ppfn, &pfnNew, sizeof (PROC), NULL);
+					VirtualProtect (ppfn, sizeof (PROC), dwDummy, &dwDummy);
+					if (!bOK)
+						return false;
+					replaced = true;
+				}
+			}
+		}
+
+		if (replaced && ppfnOriginal)
+			*ppfnOriginal = pfnOriginal ? pfnOriginal : pfnTarget;
+
+		return replaced;
+	}
+
 	// either pfnTarget or pszTargetFuncName must not be NULL
 	// ppfnOriginal, out: original address of the function
 	// pfnTarget - can be NULL. It's useful in case of dummy DLL redirectors.

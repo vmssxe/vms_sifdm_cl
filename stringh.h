@@ -81,7 +81,7 @@ inline const char* strstrni (const char* pszSrc, const char* pszSrch, int lenSrc
 	lenSrc -= lSrch;
 	while (lenSrc >= 0)
 	{
-		if (strnicmp (pszSrc, pszSrch, lSrch) == 0)
+		if (_strnicmp (pszSrc, pszSrch, lSrch) == 0)
 			return pszSrc;
 		pszSrc++;
 		lenSrc--;

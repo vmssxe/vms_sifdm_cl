@@ -53,13 +53,16 @@ inline wchar_t * __cdecl strstri (const wchar_t * str1, const wchar_t * str2)
 
 }
 
-inline const char* strstrn (const char* pszSrc, const char* pszSrch, int lenSrc)
+inline const char* strstrn (const char* pszSrc, const char* pszSrch, size_t lenSrc)
 {
 	assert (lenSrc > 0);
 	assert (pszSrch && *pszSrch != 0);
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
-	int lSrch = strlen (pszSrch);
+	auto lSrch = strlen (pszSrch);
+	assert (lenSrc <= lSrch);
+	if (lenSrc > lSrch)
+		return nullptr;
 	lenSrc -= lSrch;
 	while (lenSrc >= 0)
 	{
@@ -71,13 +74,16 @@ inline const char* strstrn (const char* pszSrc, const char* pszSrch, int lenSrc)
 	return nullptr;
 }
 
-inline const char* strstrni (const char* pszSrc, const char* pszSrch, int lenSrc)
+inline const char* strstrni (const char* pszSrc, const char* pszSrch, size_t lenSrc)
 {
 	assert (lenSrc > 0);
 	assert (pszSrch && *pszSrch != 0);
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
-	int lSrch = strlen (pszSrch);
+	auto lSrch = strlen (pszSrch);
+	assert (lenSrc <= lSrch);
+	if (lenSrc > lSrch)
+		return nullptr;
 	lenSrc -= lSrch;
 	while (lenSrc >= 0)
 	{

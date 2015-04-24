@@ -99,7 +99,13 @@ protected:
 		assert (ms_hooker);
 		FARPROC pfn = ms_hooker->onGetProcAddress (hModule, pszProcName);
 		if (pfn)
-			return pfn;
+		{
+			// make sure it's not a madness call
+			// (e.g. Firefox make such calls)
+			// if not - return hooked fn, if yes (oops) - return the original one to avoid possible crash
+			if (stricmp (pszProcName, "GetProcAddress") || hModule != GetModuleHandle (L"kernel32.dll"))
+				return pfn;
+		}
 		typedef FARPROC (WINAPI *FNGetProcAddress)(HMODULE hModule, LPCSTR pszProcName);
 		FNGetProcAddress pfnGA = (FNGetProcAddress)ms_hooker->getOriginalFunction ((FARPROC)myGetProcAddress);
 		assert (pfnGA != NULL);

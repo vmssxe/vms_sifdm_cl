@@ -2,6 +2,17 @@
 #include "vmsPeTools.h"
 class vmsPeFnHook
 {
+protected:
+	struct FunctionInfo
+	{
+		std::string strImportingModuleName;
+		HMODULE hImportingModule = nullptr;
+		std::string strFunctionName;
+		FARPROC pfnTarget = nullptr; // module's original function from export table
+		FARPROC pfnHook = nullptr; // our function
+		FARPROC pfnOriginal = nullptr; // hooked function; it may not be equal to target one due to another 3d party hooks installed
+	};
+
 public:
 	bool HookFunction(LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnNew)
 	{
@@ -15,31 +26,28 @@ public:
 		HMODULE hMainModule = GetModuleHandle (NULL);
 		HMODULE hThisModule = vmsGetThisModuleHandle ();
 
-		FunctionInfo fi;
-		fi.strImportingModuleName = pszImportingModuleName;
-		fi.hImportingModule = GetModuleHandleA (pszImportingModuleName);
-		assert (fi.hImportingModule != NULL);
-		if (!fi.hImportingModule)
-			return false;
-		fi.strFunctionName = pszTargetFuncName;
-		fi.pfnHook = pfnNew;
-
 		vmsAUTOLOCKSECTION (m_csFunctions); // lock here for hook function to get a proper address of original fn
-		m_vFunctions.push_back (fi);
+
+		{
+			FunctionInfo fi;
+			fi.strImportingModuleName = pszImportingModuleName;
+			fi.hImportingModule = GetModuleHandleA (pszImportingModuleName);
+			assert (fi.hImportingModule != NULL);
+			if (!fi.hImportingModule)
+				return false;
+			fi.strFunctionName = pszTargetFuncName;
+			fi.pfnTarget = vmsPeTools::GetProcAddressFromExportTable (
+				fi.hImportingModule, pszTargetFuncName);
+			fi.pfnHook = pfnNew;
+
+			m_vFunctions.push_back (fi);
+		}
 
 		FunctionInfo &r_fi = m_vFunctions [m_vFunctions.size () - 1];
 
-		FARPROC pfnTarget = vmsPeTools::GetProcAddress (r_fi.hImportingModule, pszTargetFuncName);
-		FARPROC pfnOriginal = NULL;
-		bool replaced = false;
-
-		if (m_petools.ReplaceIATfunc (hMainModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &r_fi.pfnOriginal))
-			replaced = true;
-		if (m_petools.ReplaceDIATfunc (hMainModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
-			replaced = true;
-
+		bool replaced = HookFunctionInModule (hMainModule, r_fi, true);
 		if (!r_fi.pfnOriginal)
-			r_fi.pfnOriginal = pfnTarget;
+			r_fi.pfnOriginal = r_fi.pfnTarget;
 
 		vmsAUTOLOCKSECTION_UNLOCK (m_csFunctions);
 
@@ -51,11 +59,8 @@ public:
 		{
 			if (me.hModule != hThisModule && me.hModule != hMainModule)
 			{
-				if (m_petools.ReplaceIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
+				if (HookFunctionInModule (me.hModule, r_fi))
 					replaced = true;
-				if (m_petools.ReplaceDIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOriginal))
-					replaced = true;
-				//assert (r_fi.pfnOriginal == NULL || pfnOriginal == NULL || pfnOriginal == r_fi.pfnOriginal); // it can differ btw... but get some notification just in case...
 			}
 		}
 
@@ -63,15 +68,51 @@ public:
 	}
 
 protected:
-	struct FunctionInfo
+	bool HookFunctionInModule (HMODULE mod, FunctionInfo &fi, 
+		bool updateOriginalFunction = false)
 	{
-		std::string strImportingModuleName;
-		HMODULE hImportingModule;
-		std::string strFunctionName;
-		FARPROC pfnHook;
-		FARPROC pfnOriginal;
-		FunctionInfo () : pfnHook (NULL), pfnOriginal (NULL), hImportingModule (NULL) {}
-	};
+		vmsAUTOLOCKSECTION (m_csFunctions);
+		bool result = false;
+		FARPROC pfnOriginal = nullptr;
+		if (m_petools.ReplaceIATfunc (mod, fi.strImportingModuleName.c_str (), 
+			fi.strFunctionName.c_str (), fi.pfnTarget, fi.pfnHook, &pfnOriginal))
+		{
+			//assert (fi.pfnOriginal == NULL || pfnOriginal == NULL || pfnOriginal == fi.pfnOriginal); // it can differ btw... but get some notification just in case...
+			result = true;
+		}
+		if (m_petools.ReplaceDIATfunc (mod, fi.strImportingModuleName.c_str (),
+			fi.strFunctionName.c_str (), fi.pfnTarget, fi.pfnHook, 
+			pfnOriginal ? nullptr : &pfnOriginal))
+		{
+			//assert (fi.pfnOriginal == NULL || pfnOriginal == NULL || pfnOriginal == fi.pfnOriginal); // it can differ btw... but get some notification just in case...
+			result = true;
+		}
+		if (result)
+		{
+			if (!fi.pfnOriginal && updateOriginalFunction)
+				fi.pfnOriginal = pfnOriginal;
+		}
+		return result;
+	}
+
+	bool UnHookFunctionInModule (HMODULE mod, const FunctionInfo &fi)
+	{
+		vmsAUTOLOCKSECTION (m_csFunctions);
+		bool result = false;
+		if (m_petools.ReplaceIATfunc (mod, fi.strImportingModuleName.c_str (),
+			fi.strFunctionName.c_str (), fi.pfnHook, fi.pfnOriginal, nullptr))
+		{
+			result = true;
+		}
+		if (m_petools.ReplaceDIATfunc (mod, fi.strImportingModuleName.c_str (),
+			fi.strFunctionName.c_str (), fi.pfnHook, fi.pfnOriginal, nullptr))
+		{
+			result = true;
+		}
+		return result;
+	}
+
+protected:
 	std::vector <FunctionInfo> m_vFunctions;
 	vmsCriticalSection m_csFunctions;
 
@@ -141,13 +182,7 @@ public:
 		vmsAUTOLOCKSECTION_UNLOCK (m_csFunctions);
 
 		for (size_t i = 0; i < vFunctions.size (); i++)
-		{
-			const FunctionInfo &fi = vFunctions [i];
-			FARPROC pfnOriginal = NULL;
-			FARPROC pfnTarget = GetProcAddress (GetModuleHandleA (fi.strImportingModuleName.c_str ()), fi.strFunctionName.c_str ());
-			m_petools.ReplaceIATfunc (hModule, fi.strImportingModuleName.c_str (), fi.strFunctionName.c_str (), pfnTarget,
-				fi.pfnHook, &pfnOriginal);
-		}
+			HookFunctionInModule (hModule, vFunctions [i]);
 	}
 
 	typedef std::set <HMODULE> loaded_modules_data_t;
@@ -202,11 +237,7 @@ protected:
 		for (BOOL bOk = th.ModuleFirst (&me); bOk; bOk = th.ModuleNext (&me))
 		{
 			if (me.hModule != hThisModule)
-			{
-				FARPROC pfn = NULL;
-				m_petools.ReplaceIATfunc (me.hModule, fi.strImportingModuleName.c_str (),
-					fi.strFunctionName.c_str (), fi.pfnHook, fi.pfnOriginal, &pfn);
-			}
+				UnHookFunctionInModule (me.hModule, fi);
 		}
 	}
 

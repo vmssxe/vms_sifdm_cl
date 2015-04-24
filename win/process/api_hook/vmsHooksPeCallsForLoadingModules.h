@@ -49,11 +49,14 @@ protected:
 		FNLoadLibrary pfn = (FNLoadLibrary)ms_hooker->getOriginalFunction (bUnicode ? (FARPROC)myLoadLibraryW : (FARPROC)myLoadLibraryA);
 		assert (pfn != NULL);
 
+		vmsPeFnHook::loaded_modules_data_t modulesWas;
+		ms_hooker->onBeforeNewModuleLoaded (modulesWas);
+
 		HMODULE hMod = pfn (lpFileName);
 		if (!hMod)
 			return NULL;
 
-		ms_hooker->onNewModuleLoaded (hMod);
+		ms_hooker->onAfterNewModuleLoaded (modulesWas);
 
 		return hMod;
 	}
@@ -74,12 +77,19 @@ protected:
 		assert (ms_hooker);
 		FNLoadLibraryEx pfn = (FNLoadLibraryEx)ms_hooker->getOriginalFunction (bUnicode ? (FARPROC)myLoadLibraryExW : (FARPROC)myLoadLibraryExA);
 		assert (pfn != NULL);
+
+		const bool needHook = 0 == (dwFlags & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE));
+
+		vmsPeFnHook::loaded_modules_data_t modulesWas;
+		if (needHook)
+			ms_hooker->onBeforeNewModuleLoaded (modulesWas);
+
 		HMODULE hMod = pfn (lpFileName, hFile, dwFlags);
 		if (!hMod)
 			return NULL;
 
-		if (0 == (dwFlags & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE)))
-			ms_hooker->onNewModuleLoaded (hMod);
+		if (needHook)
+			ms_hooker->onAfterNewModuleLoaded (modulesWas);
 
 		return hMod;
 	}

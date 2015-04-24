@@ -42,7 +42,7 @@ public:
 		return false;
 	}
 
-	bool ReplaceDIATfunc (HMODULE hTarget, LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnTarget, FARPROC pfnNew, FARPROC *ppfnOriginal)
+	static bool ReplaceDIATfunc (HMODULE hTarget, LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnTarget, FARPROC pfnNew, FARPROC *ppfnOriginal)
 	{
 		// we need to call module's function instead of calling delayLoadHelper each time
 		// caller must provide its address (by loading module and getting the function's address) or
@@ -130,7 +130,8 @@ public:
 	// either pfnTarget or pszTargetFuncName must not be NULL
 	// ppfnOriginal, out: original address of the function
 	// pfnTarget - can be NULL. It's useful in case of dummy DLL redirectors.
-	bool ReplaceIATfunc (HMODULE hTarget, LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnTarget, FARPROC pfnNew, FARPROC *ppfnOriginal)
+	bool ReplaceIATfunc (HMODULE hTarget, LPCSTR pszImportingModuleName, 
+		LPCSTR pszTargetFuncName, FARPROC pfnTarget, FARPROC pfnNew, FARPROC *ppfnOriginal)
 	{
 		PIMAGE_DOS_HEADER pDosHeader = PIMAGE_DOS_HEADER (hTarget);
 		PIMAGE_NT_HEADERS pNTHeaders = RvaToAddr (PIMAGE_NT_HEADERS, hTarget, pDosHeader->e_lfanew);
@@ -157,7 +158,7 @@ public:
 			}
 		}
 
-		FARPROC pfnOriginal = NULL;
+		bool needOriginal = ppfnOriginal != nullptr;
 
 		for (int iImportingModule = 0; pImportDesc->Name; pImportDesc++, iImportingModule++)
 		{
@@ -212,9 +213,12 @@ public:
 
 				if (bNeedToReplace)
 				{
-					pfnOriginal = (FARPROC)pThunk->u1.Function;
-					if (ppfnOriginal)
-						*ppfnOriginal = pfnOriginal;
+					if (needOriginal)
+					{
+						needOriginal = false;
+						*ppfnOriginal = (FARPROC)pThunk->u1.Function;
+					}
+						
 					PROC* ppfn = (PROC*)&pThunk->u1.Function;
 					DWORD dwDummy;
 					VirtualProtect (ppfn, sizeof (PROC), PAGE_EXECUTE_READWRITE, &dwDummy);
@@ -238,7 +242,7 @@ public:
 		return bReplaced;
 	}
 
-	static FARPROC GetProcAddress(HMODULE hModule, LPCSTR pszProcName)
+	static FARPROC GetProcAddressFromExportTable (HMODULE hModule, LPCSTR pszProcName)
 	{
 		PIMAGE_DOS_HEADER pDosHeader = PIMAGE_DOS_HEADER (hModule);
 		PIMAGE_NT_HEADERS pNTHeaders = RvaToAddr (PIMAGE_NT_HEADERS, hModule, pDosHeader->e_lfanew);
@@ -378,27 +382,5 @@ protected:
 		std::vector <std::vector <std::string> > vModules;
 	};
 	std::vector <CachedIatFuncNames> m_vIatFuncNames;
-
-public:
-	void ReplaceIATfuncInAllModules(LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnNew)
-	{
-		HMODULE hMainMod = GetModuleHandle (NULL);
-		HMODULE hThisMod = vmsGetThisModuleHandle ();
-
-		FARPROC pfnTarget = GetProcAddress (GetModuleHandleA (pszImportingModuleName), pszTargetFuncName);
-
-		FARPROC pfnOrig = NULL;
-		ReplaceIATfunc (hMainMod, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOrig);
-
-		// Get the list of modules in this process
-		CToolhelp th (TH32CS_SNAPMODULE, GetCurrentProcessId ());
-
-		MODULEENTRY32 me = { sizeof (me) };
-		for (BOOL bOk = th.ModuleFirst (&me); bOk; bOk = th.ModuleNext (&me))
-		{
-			if (me.hModule != hThisMod && me.hModule != hMainMod)
-				ReplaceIATfunc (me.hModule, pszImportingModuleName, pszTargetFuncName, pfnTarget, pfnNew, &pfnOrig);
-		}
-	}
 };
 

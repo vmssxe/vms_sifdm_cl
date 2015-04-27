@@ -140,7 +140,9 @@ inline BOOL CToolhelp::ReadProcessMemory(DWORD dwProcessID,
 
 
 inline BOOL CToolhelp::ProcessFirst(PPROCESSENTRY32 ppe) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    BOOL fOk = Process32First(m_hSnapshot, ppe);
    if (fOk && (ppe->th32ProcessID == 0))
       fOk = ProcessNext(ppe); // Remove the "[System Process]" (PID = 0)
@@ -149,7 +151,9 @@ inline BOOL CToolhelp::ProcessFirst(PPROCESSENTRY32 ppe) const {
 
 
 inline BOOL CToolhelp::ProcessNext(PPROCESSENTRY32 ppe) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    BOOL fOk = Process32Next(m_hSnapshot, ppe);
    if (fOk && (ppe->th32ProcessID == 0))
       fOk = ProcessNext(ppe); // Remove the "[System Process]" (PID = 0)
@@ -173,13 +177,17 @@ inline BOOL CToolhelp::ProcessFind(DWORD dwProcessId, PPROCESSENTRY32 ppe)
 
 
 inline BOOL CToolhelp::ModuleFirst(PMODULEENTRY32 pme) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Module32First(m_hSnapshot, pme));
 }
 
 
 inline BOOL CToolhelp::ModuleNext(PMODULEENTRY32 pme) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Module32Next(m_hSnapshot, pme));
 }
 
@@ -208,13 +216,17 @@ inline BOOL CToolhelp::ModuleFind(PTSTR pszModName, PMODULEENTRY32 pme) const {
 
 
 inline BOOL CToolhelp::ThreadFirst(PTHREADENTRY32 pte) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Thread32First(m_hSnapshot, pte));
 }
 
 
 inline BOOL CToolhelp::ThreadNext(PTHREADENTRY32 pte) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Thread32Next(m_hSnapshot, pte));
 }
 
@@ -245,26 +257,34 @@ inline int CToolhelp::HowManyBlocksInHeap(DWORD dwProcessID,
 
 
 inline BOOL CToolhelp::HeapListFirst(PHEAPLIST32 phl) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Heap32ListFirst(m_hSnapshot, phl));
 }
 
 
 inline BOOL CToolhelp::HeapListNext(PHEAPLIST32 phl) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Heap32ListNext(m_hSnapshot, phl));
 }
 
 
 inline BOOL CToolhelp::HeapFirst(PHEAPENTRY32 phe, DWORD dwProcessID, 
    UINT_PTR dwHeapID) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Heap32First(phe, dwProcessID, dwHeapID));
 }
 
 
 inline BOOL CToolhelp::HeapNext(PHEAPENTRY32 phe) const {
-
+	assert (m_hSnapshot != INVALID_HANDLE_VALUE);
+	if (m_hSnapshot == INVALID_HANDLE_VALUE)
+		return FALSE;
    return(Heap32Next(phe));
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <Psapi.h>
 #include "../misc/vmsAvUtil.h"
 
 inline HMODULE vmsModuleFromAddress (LPCVOID pv)
@@ -106,4 +107,11 @@ inline BOOL vmsFreeDllFromProcess (HANDLE hProcess, HMODULE hDll)
 	}
 
 	return dwResult;
+}
+
+inline bool vmsCheckModuleHandleValid (HMODULE mod)
+{
+	MODULEINFO mi = {0};
+	return FALSE != GetModuleInformation (GetCurrentProcess (),
+		mod, &mi, sizeof (mi));
 }

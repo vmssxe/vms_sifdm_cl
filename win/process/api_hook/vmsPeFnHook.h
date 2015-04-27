@@ -1,7 +1,18 @@
 #pragma once
 #include "vmsPeTools.h"
-class vmsPeFnHook
+class vmsPeFnHook :
+	public vmsCreatesThreads2
 {
+public:
+	vmsPeFnHook ()
+	{
+	}
+
+	~vmsPeFnHook ()
+	{
+		shutdown ();
+	}
+
 protected:
 	struct FunctionInfo
 	{
@@ -59,6 +70,8 @@ public:
 		{
 			if (me.hModule != hThisModule && me.hModule != hMainModule)
 			{
+				if (!vmsCheckModuleHandleValid (me.hModule))
+					continue; // todo: make it better (wait for the module to be loaded)
 				if (HookFunctionInModule (me.hModule, r_fi))
 					replaced = true;
 			}
@@ -195,6 +208,22 @@ public:
 		get_loaded_modules_data (data);
 	}
 
+	void waitForModuleBeLoaded (HMODULE mod)
+	{
+		auto timeNow = time (nullptr);
+		while (std::difftime (time (nullptr), timeNow) < 10)
+		{
+			if (!vmsCheckModuleHandleValid (mod))
+			{
+				if (wait_for_shutdown (30))
+					break;
+				continue;
+			}
+			onNewModuleLoaded (mod);
+			break;
+		}
+	}
+
 	void onAfterNewModuleLoaded (const loaded_modules_data_t &data)
 	{
 		loaded_modules_data_t dataNow;
@@ -203,7 +232,13 @@ public:
 		for (auto it = dataNow.begin (); it != dataNow.end (); ++it)
 		{
 			if (data.find (*it) == data.end ())
-				onNewModuleLoaded (*it);
+			{
+				auto mod = *it;
+				if (vmsCheckModuleHandleValid (mod))
+					onNewModuleLoaded (mod);
+				else
+					create_thread (&vmsPeFnHook::waitForModuleBeLoaded, this, mod);
+			}
 		}
 	}
 

@@ -256,25 +256,29 @@ inline uint64_t vmsGetMaximumFileSize (const tstring &fileSystemName)
 	return 0; // unknown
 }
 
-
-inline bool vmsCheckMaximumFileSize (const tstring &path, uint64_t filesize)
+inline uint64_t vmsGetMaximumFileSizeForFolder(const tstring &path)
 {
 	tstring rootPath = path;
-	assert (rootPath.length () >= 3);
-	if (rootPath.length () < 3)
-		return true;
+	assert(rootPath.length() >= 3);
+	if (rootPath.length() < 3)
+		return -1;
 
-	rootPath.erase (rootPath.begin () + 3, rootPath.end ());
+	rootPath.erase(rootPath.begin() + 3, rootPath.end());
 
-	auto fsname = vmsGetFileSystemName (rootPath);
-	assert (!fsname.empty ());
-	if (fsname.empty ())
-		return true;
+	auto fsname = vmsGetFileSystemName(rootPath);
+	assert(!fsname.empty());
+	if (fsname.empty())
+		return -1;
 
-	auto maxsize = vmsGetMaximumFileSize (fsname);
-	assert (maxsize);
+	auto maxsize = vmsGetMaximumFileSize(fsname);
+	assert(maxsize);
 	if (!maxsize)
-		return true;
+		return -1;
 
-	return filesize <= maxsize;
+	return maxsize;
+}
+
+inline bool vmsCheckMaximumFileSize(const tstring &path, uint64_t filesize)
+{
+	return (filesize <= vmsGetMaximumFileSizeForFolder(path));
 }

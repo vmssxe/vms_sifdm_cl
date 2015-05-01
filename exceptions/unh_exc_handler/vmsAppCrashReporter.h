@@ -45,7 +45,7 @@ protected:
 		}
 		cl.setArgs (tstrArgs.c_str ());
 		cl.Execute ();
-		ExitProcess (1);
+		TerminateProcess (GetCurrentProcess (), 1);
 	}
 
 public:

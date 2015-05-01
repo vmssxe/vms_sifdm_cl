@@ -156,7 +156,7 @@ protected:
 		if (!m_tstrDumpFile.empty ())
 			onCrashDumpCreated ();
 
-		ExitProcess (ERROR_UNHANDLED_EXCEPTION);
+		TerminateProcess (GetCurrentProcess (), ERROR_UNHANDLED_EXCEPTION);
 	}
 
 	static DWORD WINAPI _threadProcessException (LPVOID lp)

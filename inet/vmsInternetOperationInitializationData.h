@@ -2,6 +2,7 @@
 
 #include "vmsInternetProxyInfo.h"
 #include "vmsInternetUserAgentInfo.h"
+#include "vmsHttpRequestInitData.h"
 
 class vmsInternetOperationInitializationData : public vmsThreadSafe
 {
@@ -45,14 +46,16 @@ public:
 		return m_spUserAgentInfo;
 	}
 
-	vmsInternetOperationInitializationData ()
+	virtual void setHttpInitData (const std::shared_ptr <vmsHttpRequestInitData> &data)
 	{
-
+		vmsTHREAD_SAFE_SCOPE;
+		m_httpData = data;
 	}
 
-	virtual ~vmsInternetOperationInitializationData ()
+	std::shared_ptr <vmsHttpRequestInitData> getHttpData () const
 	{
-
+		vmsTHREAD_SAFE_SCOPE;
+		return m_httpData;
 	}
 
 	void readDataFrom (vmsInternetOperationInitializationData *p)
@@ -61,9 +64,13 @@ public:
 		setUserAgentInfo (p->getUserAgentInfo ());
 	}
 
+	vmsInternetOperationInitializationData () {}
+	virtual ~vmsInternetOperationInitializationData () {}
+
 protected:
 	vmsInternetProxyInfo::tSP m_spProxyInfo;
 	vmsInternetUserAgentInfoBase::tSP m_spUserAgentInfo;
+	std::shared_ptr <vmsHttpRequestInitData> m_httpData;
 };
 
 

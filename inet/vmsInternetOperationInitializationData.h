@@ -59,17 +59,30 @@ public:
 		return m_httpData;
 	}
 
-	virtual void setSpeedLimitManager (
+	virtual void setDownloadSpeedLimitManager (
 		const std::shared_ptr <vmsOperationSpeedLimitManager> &manager)
 	{
 		vmsTHREAD_SAFE_SCOPE;
-		m_speedLimitManager = manager;
+		m_downloadSpeedLimit = manager;
 	}
 
-	std::shared_ptr <vmsOperationSpeedLimitManager> getSpeedLimitManager () const
+	std::shared_ptr <vmsOperationSpeedLimitManager> getDownloadSpeedLimitManager () const
 	{
 		vmsTHREAD_SAFE_SCOPE;
-		return m_speedLimitManager;
+		return m_downloadSpeedLimit;
+	}
+
+	virtual void setUploadSpeedLimitManager (
+		const std::shared_ptr <vmsOperationSpeedLimitManager> &manager)
+	{
+		vmsTHREAD_SAFE_SCOPE;
+		m_uploadSpeedLimit = manager;
+	}
+
+	std::shared_ptr <vmsOperationSpeedLimitManager> getUploadSpeedLimitManager () const
+	{
+		vmsTHREAD_SAFE_SCOPE;
+		return m_uploadSpeedLimit;
 	}
 
 	void readDataFrom (vmsInternetOperationInitializationData *p)
@@ -77,7 +90,8 @@ public:
 		setProxyInfo (p->getProxyInfo ());
 		setUserAgentInfo (p->getUserAgentInfo ());
 		setHttpData (p->getHttpData ());
-		setSpeedLimitManager (p->getSpeedLimitManager ());
+		setDownloadSpeedLimitManager (p->getDownloadSpeedLimitManager ());
+		setUploadSpeedLimitManager (p->getUploadSpeedLimitManager ());
 	}
 
 	vmsInternetOperationInitializationData () {}
@@ -87,7 +101,8 @@ protected:
 	vmsInternetProxyInfo::tSP m_spProxyInfo;
 	vmsInternetUserAgentInfoBase::tSP m_spUserAgentInfo;
 	std::shared_ptr <vmsHttpRequestInitData> m_httpData;
-	std::shared_ptr <vmsOperationSpeedLimitManager> m_speedLimitManager;
+	std::shared_ptr <vmsOperationSpeedLimitManager> m_downloadSpeedLimit;
+	std::shared_ptr <vmsOperationSpeedLimitManager> m_uploadSpeedLimit;
 };
 
 

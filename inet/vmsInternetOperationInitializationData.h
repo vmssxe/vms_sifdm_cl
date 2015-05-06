@@ -3,6 +3,7 @@
 #include "vmsInternetProxyInfo.h"
 #include "vmsInternetUserAgentInfo.h"
 #include "vmsHttpRequestInitData.h"
+#include "../progress/vmsOperationSpeedLimitManager.h"
 
 class vmsInternetOperationInitializationData : public vmsThreadSafe
 {
@@ -46,7 +47,7 @@ public:
 		return m_spUserAgentInfo;
 	}
 
-	virtual void setHttpInitData (const std::shared_ptr <vmsHttpRequestInitData> &data)
+	virtual void setHttpData (const std::shared_ptr <vmsHttpRequestInitData> &data)
 	{
 		vmsTHREAD_SAFE_SCOPE;
 		m_httpData = data;
@@ -58,10 +59,25 @@ public:
 		return m_httpData;
 	}
 
+	virtual void setSpeedLimitManager (
+		const std::shared_ptr <vmsOperationSpeedLimitManager> &manager)
+	{
+		vmsTHREAD_SAFE_SCOPE;
+		m_speedLimitManager = manager;
+	}
+
+	std::shared_ptr <vmsOperationSpeedLimitManager> getSpeedLimitManager () const
+	{
+		vmsTHREAD_SAFE_SCOPE;
+		return m_speedLimitManager;
+	}
+
 	void readDataFrom (vmsInternetOperationInitializationData *p)
 	{
 		setProxyInfo (p->getProxyInfo ());
 		setUserAgentInfo (p->getUserAgentInfo ());
+		setHttpData (p->getHttpData ());
+		setSpeedLimitManager (p->getSpeedLimitManager ());
 	}
 
 	vmsInternetOperationInitializationData () {}
@@ -71,6 +87,7 @@ protected:
 	vmsInternetProxyInfo::tSP m_spProxyInfo;
 	vmsInternetUserAgentInfoBase::tSP m_spUserAgentInfo;
 	std::shared_ptr <vmsHttpRequestInitData> m_httpData;
+	std::shared_ptr <vmsOperationSpeedLimitManager> m_speedLimitManager;
 };
 
 

@@ -60,11 +60,10 @@ inline const char* strstrn (const char* pszSrc, const char* pszSrch, size_t lenS
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
 	auto lSrch = strlen (pszSrch);
-	assert (lenSrc >= lSrch);
-	if (lenSrc < lSrch)
+	assert (lSrch);
+	if (!lSrch)
 		return nullptr;
-	lenSrc -= lSrch;
-	while (lenSrc >= 0)
+	while (lenSrc >= lSrch)
 	{
 		if (strncmp (pszSrc, pszSrch, lSrch) == 0)
 			return pszSrc;
@@ -81,11 +80,10 @@ inline const char* strstrni (const char* pszSrc, const char* pszSrch, size_t len
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
 	auto lSrch = strlen (pszSrch);
-	assert (lenSrc >= lSrch);
-	if (lenSrc < lSrch)
+	assert (lSrch);
+	if (!lSrch)
 		return nullptr;
-	lenSrc -= lSrch;
-	while (lenSrc >= 0)
+	while (lenSrc >= lSrch)
 	{
 		if (_strnicmp (pszSrc, pszSrch, lSrch) == 0)
 			return pszSrc;

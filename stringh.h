@@ -60,8 +60,8 @@ inline const char* strstrn (const char* pszSrc, const char* pszSrch, size_t lenS
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
 	auto lSrch = strlen (pszSrch);
-	assert (lenSrc <= lSrch);
-	if (lenSrc > lSrch)
+	assert (lenSrc >= lSrch);
+	if (lenSrc < lSrch)
 		return nullptr;
 	lenSrc -= lSrch;
 	while (lenSrc >= 0)
@@ -81,8 +81,8 @@ inline const char* strstrni (const char* pszSrc, const char* pszSrch, size_t len
 	if (pszSrch == nullptr || *pszSrch == 0 || lenSrc == 0)
 		return nullptr;
 	auto lSrch = strlen (pszSrch);
-	assert (lenSrc <= lSrch);
-	if (lenSrc > lSrch)
+	assert (lenSrc >= lSrch);
+	if (lenSrc < lSrch)
 		return nullptr;
 	lenSrc -= lSrch;
 	while (lenSrc >= 0)

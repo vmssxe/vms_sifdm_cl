@@ -4,7 +4,8 @@
 #include <TlHelp32.h>
 #include <ShellAPI.h>
 
-class vmsCommandLine  
+class vmsCommandLine :
+	public vmsSerializable
 {
 public:
 	bool haveArgs () const
@@ -55,16 +56,19 @@ public:
 			ptsz++;
 		m_tstrArgs = ptsz;
 		RemoveTrailingSpaces ();
+		setDirty ();
 	}
 
 	void setExe (LPCTSTR ptsz)
 	{
 		m_tstrExe = ptsz;
+		setDirty ();
 	}
 
 	void Clear()
 	{
 		m_tstrExe = m_tstrArgs = _T ("");
+		setDirty ();
 	}
 
 	LPCTSTR getArgs () const
@@ -206,7 +210,7 @@ public:
 
 	vmsCommandLine (LPCTSTR ptszCommandLine) {fromString (ptszCommandLine);}
 	vmsCommandLine (const tstring &tstrCommandLine) {fromString (tstrCommandLine.c_str ());}
-	vmsCommandLine (const tstring& exe, const tstring& args) : m_tstrExe (exe), m_tstrArgs (args) {}
+	vmsCommandLine (const tstring& exe, const tstring& args) : m_tstrExe (exe), m_tstrArgs (args) {setDirty ();}
 
 public:
 	enum ExecutionFlags
@@ -490,6 +494,13 @@ protected:
 		CloseHandle (pi.hThread);
 
 		return true;
+	}
+
+public:
+	virtual bool Serialize (vmsSerializationIoStream *pStm, unsigned flags /* = 0 */) override
+	{
+		return pStm->SerializeValue (L"cmdlineEXE", m_tstrExe) &&
+			pStm->SerializeValue (L"cmdlineArgs", m_tstrArgs);
 	}
 };
 

@@ -1,8 +1,9 @@
 #pragma once
-#include <csignal>
 #include <fstream>
 #include "../vmsExceptionLog.h"
-#include "../getexcptrs.h"
+#include "exc_provider/vmsUnhandledExceptionProvider.h"
+#include "exc_provider/vmsCrtFatalExceptionProvider.h"
+#include "exc_provider/vmsVectoredFatalExceptionProvider.h"
 #pragma comment (lib, "dbghelp.lib")
 class vmsCrashCatcher
 {
@@ -10,34 +11,12 @@ public:
 	vmsCrashCatcher () : 
 		m_dwpFaultModuleCrashAddress (NULL), 
 		m_dwGettingFaultModuleNameError (0),
-		m_bInitialized (false),
-		m_abort_prev_handler (nullptr)
+		m_bInitialized (false)
 	{
-		assert (m_pThis == NULL);
-		if (m_pThis != NULL)
-			throw 0;
-		m_pThis = this;
 	}
 
 	virtual ~vmsCrashCatcher(void)
 	{
-		if (m_pThis == this)
-		{
-			if (m_bInitialized)
-			{
-				SetUnhandledExceptionFilter (m_pPrevFilter);
-				m_pPrevFilter = NULL;
-				if (m_pVEH)
-				{
-					RemoveVectoredExceptionHandler (m_pVEH);
-					m_pVEH = NULL;
-				}
-				if (m_abort_prev_handler)
-					signal (SIGABRT, m_abort_prev_handler);
-			}
-
-			m_pThis = NULL;
-		}
 	}
 
 	void Initialize ()
@@ -45,19 +24,25 @@ public:
 		assert (!m_bInitialized);
 		if (m_bInitialized)
 			return;
-		m_pPrevFilter = SetUnhandledExceptionFilter (_UnhandledExceptionFilter);
-		//m_pVEH = AddVectoredExceptionHandler (TRUE, _VectoredExceptionHandler);
-		_set_invalid_parameter_handler (_crt_InvalidParameterHandler);
-		m_abort_prev_handler = signal (SIGABRT, signal_handler);
+
+		m_excProviders.push_back (std::make_unique <vmsUnhandledExceptionProvider> ());
+		m_excProviders.push_back (std::make_unique <vmsCrtFatalExceptionProvider> ());
+		//m_excProviders.push_back (std::make_unique <vmsVectoredFatalExceptionProvider> ());
+
+		auto fe_callback = [this](PEXCEPTION_POINTERS ep){return on_fatal_exception (ep);};
+
+		for (const auto &prov : m_excProviders)
+			prov->set_callback (fe_callback);
+
 		m_bInitialized = true;
 	}
 
-	void setLogVehExceptions (bool bSet = true)
+	void setLogExceptions (bool bSet = true)
 	{
 		try {
 			if (!bSet)
 			{
-				m_VehLogFile.close ();
+				m_LogFile.close ();
 				return;
 			}
 			TCHAR tszPath [MAX_PATH] = _T ("");
@@ -73,38 +58,40 @@ public:
 				_tcscat (tszPath, _T ("\\"));
 				_tcscat (tszPath, ptszExeName);
 				_tcscat (tszPath, _T (".xml"));
-				m_VehLogFile.open (tszPath, std::ios_base::out | std::ios_base::trunc);
+				m_LogFile.open (tszPath, std::ios_base::out | std::ios_base::trunc);
 			}
 		}catch (...){}
 	}
 
 protected:
-	static vmsCrashCatcher* m_pThis;
-	static LPTOP_LEVEL_EXCEPTION_FILTER m_pPrevFilter;
-	static PVOID m_pVEH;
+	std::vector <std::unique_ptr <vmsFatalExceptionProvider>> m_excProviders;
 	tstring m_tstrDumpFile;
 	tstring m_tstrFaultModuleName;
 	DWORD_PTR m_dwpFaultModuleCrashAddress;
 	DWORD m_dwGettingFaultModuleNameError;
 	bool m_bInitialized;
-	typedef void (__cdecl *FNSignalHandler)(int);
-	FNSignalHandler m_abort_prev_handler;
 
-	struct ExceptionInfo
+protected:
+	ULONG on_fatal_exception (PEXCEPTION_POINTERS pEP)
 	{
-		DWORD dwThreadId;
-		PEXCEPTION_POINTERS pEP;
-		ExceptionInfo () : dwThreadId (0), pEP (NULL) {}
-	};
-	ExceptionInfo m_ei;
+		auto params = new _threadProcessExceptionParams;
+		params->pthis = this;
+		params->pEP = pEP;
+		params->thread_id = GetCurrentThreadId ();
 
-	static tstring CreateDump (const ExceptionInfo &ei)
+		WaitForSingleObject (
+			CreateThread (NULL, 0, _threadProcessException, params, 0, NULL), INFINITE);
+
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	static tstring CreateDump (PEXCEPTION_POINTERS pEP, DWORD thread_id)
 	{
 		// create crash dump file
 
 		MINIDUMP_EXCEPTION_INFORMATION eInfo;
-		eInfo.ThreadId = ei.dwThreadId;
-		eInfo.ExceptionPointers = ei.pEP;
+		eInfo.ThreadId = thread_id;
+		eInfo.ExceptionPointers = pEP;
 		eInfo.ClientPointers = FALSE;
 
 		TCHAR tszTmpFile [MAX_PATH] = _T ("");
@@ -130,21 +117,21 @@ protected:
 		return bDumpCreated ? tszTmpFile : _T ("");
 	}
 
-	void ProcessException ()
+	void ProcessException (PEXCEPTION_POINTERS pEP, DWORD thread_id)
 	{
 		vmsAUTOLOCKSECTION (m_csExceptionHandler);
 
-		LogException (m_ei.pEP);
+		LogException (pEP);
 
-		m_tstrDumpFile = CreateDump (m_ei);
+		m_tstrDumpFile = CreateDump (pEP, thread_id);
 
 		// query basic crash info (module name and crash address)
 
 		MEMORY_BASIC_INFORMATION mbi;
-		SIZE_T nSize = VirtualQuery (m_ei.pEP->ExceptionRecord->ExceptionAddress, &mbi, sizeof(mbi));
+		SIZE_T nSize = VirtualQuery (pEP->ExceptionRecord->ExceptionAddress, &mbi, sizeof(mbi));
 		if (nSize)
 		{
-			m_dwpFaultModuleCrashAddress = (DWORD_PTR)m_ei.pEP->ExceptionRecord->ExceptionAddress - (DWORD_PTR)mbi.AllocationBase;
+			m_dwpFaultModuleCrashAddress = (DWORD_PTR)pEP->ExceptionRecord->ExceptionAddress - (DWORD_PTR)mbi.AllocationBase;
 			TCHAR tszModule [MAX_PATH] = _T ("");
 			GetModuleFileName ((HMODULE)mbi.AllocationBase, tszModule, _countof (tszModule));
 			if (*tszModule)
@@ -159,91 +146,36 @@ protected:
 		TerminateProcess (GetCurrentProcess (), ERROR_UNHANDLED_EXCEPTION);
 	}
 
+protected:
+	struct _threadProcessExceptionParams
+	{
+		vmsCrashCatcher *pthis;
+		PEXCEPTION_POINTERS pEP;
+		DWORD thread_id;
+	};
+
 	static DWORD WINAPI _threadProcessException (LPVOID lp)
 	{
-		vmsCrashCatcher *pthis = (vmsCrashCatcher*)lp;
-		pthis->ProcessException ();
+		std::unique_ptr <_threadProcessExceptionParams> params (
+			reinterpret_cast <_threadProcessExceptionParams*> (lp));
+		params->pthis->ProcessException (params->pEP, params->thread_id);
 		return 0;
 	}
 
-	static LONG WINAPI _UnhandledExceptionFilter (PEXCEPTION_POINTERS pEP)
-	{
-		m_pThis->m_ei.dwThreadId = GetCurrentThreadId ();
-		m_pThis->m_ei.pEP = pEP;
-
-		WaitForSingleObject (
-			CreateThread (NULL, 0, _threadProcessException, m_pThis, 0, NULL), INFINITE);
-
-		return EXCEPTION_EXECUTE_HANDLER;
-	}
-
-	static LONG WINAPI _VectoredExceptionHandler (PEXCEPTION_POINTERS pEP)
-	{
-		const BYTE bCode = pEP->ExceptionRecord->ExceptionCode >> 24;
-
-		if (bCode == 0xC0 || bCode == 0x40 || bCode == 0x80)
-		{
-			m_pThis->m_ei.dwThreadId = GetCurrentThreadId ();
-			m_pThis->m_ei.pEP = pEP;
-
-			WaitForSingleObject (
-				CreateThread (NULL, 0, _threadProcessException, m_pThis, 0, NULL), INFINITE);
-		}
-		else
-		{
-			m_pThis->LogException (pEP);
-		}
-
-		return EXCEPTION_CONTINUE_SEARCH;
-	}
-
-
-	static void _crt_InvalidParameterHandler (const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved)
-	{
-		on_crt_fatal_error ();
-	}
-
-
-	static void signal_handler (int)
-	{
-		on_crt_fatal_error ();
-	}
-
-
-	static void on_crt_fatal_error ()
-	{
-		PEXCEPTION_POINTERS pEP = NULL;
-		GetExceptionPointers (0, &pEP);
-		assert (pEP != NULL);
-		if (pEP)
-		{
-			m_pThis->m_ei.dwThreadId = GetCurrentThreadId ();
-			m_pThis->m_ei.pEP = pEP;
-			m_pThis->ProcessException ();
-		}
-		else
-		{
-			throw 0; // proceed with SEH handler
-		}
-	}
-
+protected:
 	virtual void onCrashDumpCreated () = NULL;
 
 
 protected:
 	inline void LogException (PEXCEPTION_POINTERS pEP)
 	{
-		if (m_VehLogFile)
+		if (m_LogFile)
 		{
-			vmsExceptionLog::LogException (m_VehLogFile, pEP);
-			m_VehLogFile.flush ();
+			vmsExceptionLog::LogException (m_LogFile, pEP);
+			m_LogFile.flush ();
 		}
 	}
 
-	std::ofstream m_VehLogFile;
+	std::ofstream m_LogFile;
 	vmsCriticalSection m_csExceptionHandler;
 };
-
-__declspec(selectany) vmsCrashCatcher* vmsCrashCatcher::m_pThis = NULL;
-__declspec(selectany) LPTOP_LEVEL_EXCEPTION_FILTER vmsCrashCatcher::m_pPrevFilter = NULL;
-__declspec(selectany) PVOID vmsCrashCatcher::m_pVEH = NULL;

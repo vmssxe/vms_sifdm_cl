@@ -8,10 +8,12 @@ class CDlgUnhandledException :
 {
 public:
 	CDlgUnhandledException (const std::wstring& app_name,
+		const std::wstring& productPartName,
 		bool disableRestartAppOption) :
 		m_bRestartApp (false),
 		m_hBoldFont (NULL),
 		m_app_name (app_name),
+		m_productPartName (productPartName),
 		m_disableRestartAppOption (disableRestartAppOption)
 	{
 	}
@@ -25,12 +27,6 @@ public:
 	INT_PTR DoModal (HWND hWndParent = ::GetActiveWindow (), LPARAM dwInitParam = NULL)
 	{
 		std::wstring str;
-
-		WCHAR wszModule[MAX_PATH] = L"";
-		GetModuleFileName (nullptr, wszModule, _countof (wszModule));
-		LPCWSTR module_name = wcsrchr (wszModule, '\\');
-		if (module_name)
-			module_name++;
 
 		str = m_app_name;
 		str += L" - fatal error occurred";
@@ -47,10 +43,10 @@ public:
 			WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP);
 
 		str = m_app_name;
-		if (module_name)
+		if (!m_productPartName.empty ())
 		{
 			str += L" (";
-			str += module_name;
+			str += m_productPartName;
 			str += L")";
 		}
 		str += L" - fatal error (bug) occurred. ";
@@ -157,4 +153,5 @@ protected:
 	HFONT m_hBoldFont;
 	std::wstring m_app_name;
 	bool m_disableRestartAppOption;
+	std::wstring m_productPartName;
 };

@@ -16,14 +16,30 @@ public:
 public:
 	vmsAppCrashReporter(void) {}
 
-	vmsAppCrashReporter (const std::wstring& wstrAppName, const std::wstring& wstrAppVersion,
-			const std::wstring& targetHost, const std::wstring& targetPath) :
+	vmsAppCrashReporter (
+		const std::wstring& wstrAppName, 
+		const std::wstring &wstrAppPartName,
+		const std::wstring& wstrAppVersion,
+		const std::wstring& targetHost, const std::wstring& targetPath) :
 		m_wstrAppName (wstrAppName), 
+		m_wstrAppPartName (wstrAppPartName),
 		m_wstrAppVersion (wstrAppVersion),
 		m_targetHost (targetHost),
-		m_targetPath (targetPath) {}
+		m_targetPath (targetPath) 
+	{
+		if (m_wstrAppPartName.empty ())
+		{
+			WCHAR wszModule [MAX_PATH] = L"";
+			GetModuleFileName (nullptr, wszModule, _countof (wszModule));
+			LPCWSTR module_name = wcsrchr (wszModule, '\\');
+			if (module_name)
+				m_wstrAppPartName = ++module_name;
+		}
+	}
 
-	~vmsAppCrashReporter(void) {}
+	~vmsAppCrashReporter(void) 
+	{
+	}
 
 protected:
 	enum
@@ -67,6 +83,9 @@ protected:
 		tstrArgs += _T (" -appName=\""); 
 		tstrArgs += m_wstrAppName;
 		tstrArgs += L"\"";
+		tstrArgs += _T (" -appPartName=\"");
+		tstrArgs += m_wstrAppPartName;
+		tstrArgs += L"\"";
 		tstrArgs += _T (" -appVersion=\"");
 		tstrArgs += m_wstrAppVersion;
 		tstrArgs += L"\"";
@@ -93,10 +112,12 @@ public:
 		const vmsCommandLineParser::Argument *pArgAppRestartExe = cp.findArgument (_T ("appRestartExe"));
 		const vmsCommandLineParser::Argument *pArgAppRestartArgs = cp.findArgument (_T ("appRestartArgs"));
 		const vmsCommandLineParser::Argument *pAppName = cp.findArgument (_T ("appName"));
+		const vmsCommandLineParser::Argument *pAppPartName = cp.findArgument (_T ("appPartName"));
 		const vmsCommandLineParser::Argument *pAppVersion = cp.findArgument (_T ("appVersion"));
 		const vmsCommandLineParser::Argument *pFlags = cp.findArgument (_T ("flags"));
 
 		auto appName = pAppName && !pAppName->second.empty () ? pAppName->second : m_wstrAppName;
+		auto appPartName = pAppPartName && !pAppPartName->second.empty () ? pAppPartName->second : m_wstrAppPartName;
 		auto appVersion = pAppVersion && !pAppVersion->second.empty () ? pAppVersion->second : m_wstrAppVersion;
 
 		if (pArgAppRestartExe)
@@ -123,7 +144,8 @@ public:
 
 		bool bSendDumpToServer, restart_app;
 		std::wstring user_description;
-		show_on_crashed_ui (appName, restart_app, bSendDumpToServer, user_description);
+		show_on_crashed_ui (appName, appPartName, restart_app, 
+			bSendDumpToServer, user_description);
 
 		if (restart_app)
 		{
@@ -173,8 +195,9 @@ public:
 		m_tstrAppRestartArgs = ptszArgs;
 	}
 
-	void InitializeCrashCatcher ()
+	void InitializeCrashCatcher (uint32_t crashCatcherFlags = vmsCrashCatcher::LegacyMode)
 	{
+		vmsCrashCatcher::m_flags = crashCatcherFlags;
 		vmsCrashCatcher::Initialize ();
 	}
 
@@ -195,15 +218,18 @@ protected:
 	tstring m_tstrAppRestartExe;
 	tstring m_tstrAppRestartArgs;
 	std::wstring m_wstrAppName;
+	std::wstring m_wstrAppPartName;
 	std::wstring m_wstrAppVersion;
 	std::wstring m_targetHost, m_targetPath;
 
 protected:
-	virtual void show_on_crashed_ui (const std::wstring &appName, bool& restart_app, 
+	virtual void show_on_crashed_ui (const std::wstring &appName, 
+		const std::wstring &appPartName, 
+		bool& restart_app, 
 		bool& send_crash_report, std::wstring& user_description)
 	{
 		const bool no_restart = (m_flags & NoRestartAppOption) != 0;
-		CDlgUnhandledException dlgUnhExc (appName, no_restart);
+		CDlgUnhandledException dlgUnhExc (appName, appPartName, no_restart);
 		send_crash_report = IDOK == dlgUnhExc.DoModal ();
 		restart_app = no_restart ? false : dlgUnhExc.m_bRestartApp;
 		user_description = dlgUnhExc.m_wstrDescription;

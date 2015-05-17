@@ -1,14 +1,20 @@
 #pragma once
+#include <atlbase.h>
+#include <atlwin.h>
 #include "../../win/atl/DialogImplEx.h"
 #include "../../win/vmsDialogTemplate.h"
 class CDlgUnhandledException :
 	public CDialogImplEx < CDlgUnhandledException >
 {
 public:
-	CDlgUnhandledException (const std::wstring& app_name) :
+	CDlgUnhandledException (const std::wstring& app_name,
+		bool disableRestartAppOption) :
 		m_bRestartApp (false),
 		m_hBoldFont (NULL),
-		m_app_name (app_name) {}
+		m_app_name (app_name),
+		m_disableRestartAppOption (disableRestartAppOption)
+	{
+	}
 
 	~CDlgUnhandledException ()
 	{
@@ -99,7 +105,10 @@ public:
 		lf.lfWeight = FW_BOLD;
 		m_hBoldFont = CreateFontIndirect (&lf);
 
-		CheckDlgButton (IDC_RESTART_APP, BST_CHECKED);
+		if (!m_disableRestartAppOption)
+			CheckDlgButton (IDC_RESTART_APP, BST_CHECKED);
+		else
+			GetDlgItem (IDC_RESTART_APP).EnableWindow (FALSE);
 
 		::SetFocus (GetDlgItem (IDC_DESCRIPTION));
 
@@ -127,7 +136,8 @@ public:
 
 	LRESULT OnOKCancel (WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
 	{
-		m_bRestartApp = IsDlgButtonChecked (IDC_RESTART_APP) == BST_CHECKED;
+		m_bRestartApp = !m_disableRestartAppOption &&
+			IsDlgButtonChecked (IDC_RESTART_APP) == BST_CHECKED;
 		BSTR bstr = NULL;
 		GetDlgItemText (IDC_DESCRIPTION, bstr);
 		if (bstr)
@@ -146,4 +156,5 @@ public:
 protected:
 	HFONT m_hBoldFont;
 	std::wstring m_app_name;
+	bool m_disableRestartAppOption;
 };

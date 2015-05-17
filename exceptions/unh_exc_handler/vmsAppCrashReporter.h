@@ -7,6 +7,13 @@ class vmsAppCrashReporter :
 	public vmsCrashCatcher
 {
 public:
+	enum 
+	{
+		DontTerminateProcess	= 1,
+		NoRestartAppOption		= 1 << 1,
+	};
+
+public:
 	vmsAppCrashReporter(void) {}
 
 	vmsAppCrashReporter (const std::wstring& wstrAppName, const std::wstring& wstrAppVersion,
@@ -19,12 +26,20 @@ public:
 	~vmsAppCrashReporter(void) {}
 
 protected:
+	enum
+	{
+		SubmitReportFlagsMask = NoRestartAppOption
+	};
+
+	uint32_t m_flags = 0;
+
+protected:
 	virtual void onCrashDumpCreated () override
 	{
+		TCHAR tsz [1000];
 		vmsCommandLine cl;
-		TCHAR tsz[MAX_PATH] = _T ("");
-		GetModuleFileName (NULL, tsz, _countof (tsz));
-		cl.setExe (tsz);
+		cl.setExe (!m_tstrCrashReportingExe.empty () ? 
+			m_tstrCrashReportingExe.c_str () : vmsGetModuleFileName ().c_str ());
 		tstring tstrArgs = _T ("-submitDump=\"");
 		tstrArgs += m_tstrDumpFile;
 		tstrArgs += _T ("\" -faultModule=\"");
@@ -35,14 +50,29 @@ protected:
 			tstrArgs += _itot (m_dwGettingFaultModuleNameError, tsz, 10);
 		}
 		tstrArgs += _T ("\" -faultModuleCrashAddr=");
-		_stprintf_s <MAX_PATH> (tsz, _T ("%I64x"), (UINT64)m_dwpFaultModuleCrashAddress);
+		_stprintf_s <_countof (tsz)> (tsz, _T ("%I64x"), (UINT64)m_dwpFaultModuleCrashAddress);
 		tstrArgs += tsz;
+		if (!m_tstrAppRestartExe.empty ())
+		{
+			tstrArgs += _T (" -appRestartExe=\"");
+			tstrArgs += m_tstrAppRestartExe;
+			tstrArgs += _T ("\"");
+		}
 		if (!m_tstrAppRestartArgs.empty ())
 		{
 			tstrArgs += _T (" -appRestartArgs=\"");
 			tstrArgs += m_tstrAppRestartArgs;
 			tstrArgs += _T ("\"");
 		}
+		tstrArgs += _T (" -appName=\""); 
+		tstrArgs += m_wstrAppName;
+		tstrArgs += L"\"";
+		tstrArgs += _T (" -appVersion=\"");
+		tstrArgs += m_wstrAppVersion;
+		tstrArgs += L"\"";
+		auto flags = m_flags & SubmitReportFlagsMask;
+		tstrArgs += L" -flags=";
+		tstrArgs += _ultow (flags, tsz, 10);
 		cl.setArgs (tstrArgs.c_str ());
 		cl.Execute ();
 		TerminateProcess (GetCurrentProcess (), 1);
@@ -60,10 +90,27 @@ public:
 		const vmsCommandLineParser::Argument *pArgFaultModule = cp.findArgument (_T ("faultModule"));
 		const vmsCommandLineParser::Argument *pArgGettingFaultModuleNameError = cp.findArgument (_T ("gettingFaultModuleNameError"));
 		const vmsCommandLineParser::Argument *pArgFaultModuleCrashAddr = cp.findArgument (_T ("faultModuleCrashAddr"));
+		const vmsCommandLineParser::Argument *pArgAppRestartExe = cp.findArgument (_T ("appRestartExe"));
 		const vmsCommandLineParser::Argument *pArgAppRestartArgs = cp.findArgument (_T ("appRestartArgs"));
+		const vmsCommandLineParser::Argument *pAppName = cp.findArgument (_T ("appName"));
+		const vmsCommandLineParser::Argument *pAppVersion = cp.findArgument (_T ("appVersion"));
+		const vmsCommandLineParser::Argument *pFlags = cp.findArgument (_T ("flags"));
+
+		auto appName = pAppName && !pAppName->second.empty () ? pAppName->second : m_wstrAppName;
+		auto appVersion = pAppVersion && !pAppVersion->second.empty () ? pAppVersion->second : m_wstrAppVersion;
+
+		if (pArgAppRestartExe)
+			setAppRestartExe (pArgAppRestartArgs->second);
 
 		if (pArgAppRestartArgs)
 			setAppRestartArgs (pArgAppRestartArgs->second.c_str ());
+
+		if (pFlags)
+		{
+			uint32_t flags = wcstoul (pFlags->second.c_str (), nullptr, 10);
+			m_flags &= ~SubmitReportFlagsMask;
+			m_flags |= flags;
+		}
 
 		bContinue = true;
 
@@ -76,14 +123,13 @@ public:
 
 		bool bSendDumpToServer, restart_app;
 		std::wstring user_description;
-		show_on_crashed_ui (restart_app, bSendDumpToServer, user_description);
+		show_on_crashed_ui (appName, restart_app, bSendDumpToServer, user_description);
 
 		if (restart_app)
 		{
 			vmsCommandLine cl;
-			TCHAR tsz[MAX_PATH] = _T ("");
-			GetModuleFileName (NULL, tsz, _countof (tsz));
-			cl.setExe (tsz);
+			cl.setExe (!m_tstrAppRestartExe.empty () ? 
+				m_tstrAppRestartExe.c_str () : vmsGetModuleFileName ().c_str ());
 			cl.setArgs (m_tstrAppRestartArgs.c_str ());
 			cl.Execute ();
 		}
@@ -94,8 +140,8 @@ public:
 			UINT64 uCrashAddr = 0;
 			if (pArgFaultModuleCrashAddr)
 				_stscanf (pArgFaultModuleCrashAddr->second.c_str (), _T ("%I64x"), &uCrashAddr);
-			assert (!m_wstrAppName.empty () && !m_wstrAppVersion.empty ());
-			vmsCrashReporter::GenerateXml (m_wstrAppName.c_str (), m_wstrAppVersion.c_str (),
+			assert (!appName.empty () && !appVersion.empty ());
+			vmsCrashReporter::GenerateXml (appName.c_str (), appVersion.c_str (),
 				user_description.c_str (), pArgFaultModule ? pArgFaultModule->second.c_str () : NULL, 
 				pArgGettingFaultModuleNameError ? (DWORD)_ttoi (pArgGettingFaultModuleNameError->second.c_str ()) : 0, 
 				(DWORD_PTR)uCrashAddr, NULL, strXml);
@@ -108,6 +154,18 @@ public:
 		CoUninitialize ();
 
 		return true;
+	}
+
+	void setCrashReportingExe (const tstring &exe)
+	{
+		m_tstrCrashReportingExe = exe;
+		m_flags |= NoRestartAppOption;
+	}
+
+	void setAppRestartExe (const tstring &exe)
+	{
+		m_tstrAppRestartExe = exe;
+		m_flags &= ~NoRestartAppOption;
 	}
 
 	void setAppRestartArgs (LPCTSTR ptszArgs) 
@@ -133,18 +191,21 @@ public:
 	}
 
 protected:
+	tstring m_tstrCrashReportingExe;
+	tstring m_tstrAppRestartExe;
 	tstring m_tstrAppRestartArgs;
 	std::wstring m_wstrAppName;
 	std::wstring m_wstrAppVersion;
 	std::wstring m_targetHost, m_targetPath;
 
 protected:
-	virtual void show_on_crashed_ui (bool& restart_app, bool& send_crash_report, 
-		std::wstring& user_description)
+	virtual void show_on_crashed_ui (const std::wstring &appName, bool& restart_app, 
+		bool& send_crash_report, std::wstring& user_description)
 	{
-		CDlgUnhandledException dlgUnhExc (m_wstrAppName);
+		const bool no_restart = (m_flags & NoRestartAppOption) != 0;
+		CDlgUnhandledException dlgUnhExc (appName, no_restart);
 		send_crash_report = IDOK == dlgUnhExc.DoModal ();
-		restart_app = dlgUnhExc.m_bRestartApp;
+		restart_app = no_restart ? false : dlgUnhExc.m_bRestartApp;
 		user_description = dlgUnhExc.m_wstrDescription;
 	}
 };

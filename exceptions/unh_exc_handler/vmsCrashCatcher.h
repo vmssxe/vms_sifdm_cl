@@ -4,14 +4,28 @@
 #include "exc_provider/vmsUnhandledExceptionProvider.h"
 #include "exc_provider/vmsCrtFatalExceptionProvider.h"
 #include "exc_provider/vmsVectoredFatalExceptionProvider.h"
+#include "../../win/process/util.h"
 #pragma comment (lib, "dbghelp.lib")
 class vmsCrashCatcher
 {
 public:
+	enum 
+	{
+		OverrideTopLevelExceptionFilter		= 1,
+		CatchCrtExceptions					= 1 << 1,
+		UseVectoredExceptionsHandler		= 1 << 2,
+		CatchThisModuleExceptionsOnly		= 1 << 3,
+	};
+
+	enum
+	{
+		LegacyMode = (OverrideTopLevelExceptionFilter | CatchCrtExceptions)
+	};
+
+public:
 	vmsCrashCatcher () : 
 		m_dwpFaultModuleCrashAddress (NULL), 
-		m_dwGettingFaultModuleNameError (0),
-		m_bInitialized (false)
+		m_dwGettingFaultModuleNameError (0)
 	{
 	}
 
@@ -21,20 +35,23 @@ public:
 
 	void Initialize ()
 	{
-		assert (!m_bInitialized);
-		if (m_bInitialized)
+		assert (m_excProviders.empty ());
+		if (!m_excProviders.empty ())
 			return;
 
-		m_excProviders.push_back (std::make_unique <vmsUnhandledExceptionProvider> ());
-		m_excProviders.push_back (std::make_unique <vmsCrtFatalExceptionProvider> ());
-		//m_excProviders.push_back (std::make_unique <vmsVectoredFatalExceptionProvider> ());
+		if (m_flags & OverrideTopLevelExceptionFilter)
+			m_excProviders.push_back (std::make_unique <vmsUnhandledExceptionProvider> ());
+
+		if (m_flags & CatchCrtExceptions)
+			m_excProviders.push_back (std::make_unique <vmsCrtFatalExceptionProvider> ());
+
+		if (m_flags & UseVectoredExceptionsHandler)
+			m_excProviders.push_back (std::make_unique <vmsVectoredFatalExceptionProvider> ());
 
 		auto fe_callback = [this](PEXCEPTION_POINTERS ep){return on_fatal_exception (ep);};
 
 		for (const auto &prov : m_excProviders)
 			prov->set_callback (fe_callback);
-
-		m_bInitialized = true;
 	}
 
 	void setLogExceptions (bool bSet = true)
@@ -69,11 +86,20 @@ protected:
 	tstring m_tstrFaultModuleName;
 	DWORD_PTR m_dwpFaultModuleCrashAddress;
 	DWORD m_dwGettingFaultModuleNameError;
-	bool m_bInitialized;
+	uint32_t m_flags = LegacyMode;
 
 protected:
 	ULONG on_fatal_exception (PEXCEPTION_POINTERS pEP)
 	{
+		if (m_flags & CatchThisModuleExceptionsOnly)
+		{
+			if (vmsGetThisModuleHandle () != 
+				vmsModuleFromAddress (pEP->ExceptionRecord->ExceptionAddress))
+			{
+				return EXCEPTION_CONTINUE_SEARCH;
+			}
+		}
+
 		auto params = new _threadProcessExceptionParams;
 		params->pthis = this;
 		params->pEP = pEP;

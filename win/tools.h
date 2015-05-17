@@ -6,14 +6,14 @@
 inline std::wstring vmsGetModuleFileName (HMODULE hMod = NULL)
 {
 	wchar_t wszPath [MAX_PATH] = L"";
-	GetModuleFileName (NULL, wszPath, _countof (wszPath));
+	GetModuleFileName (hMod, wszPath, _countof (wszPath));
 	return wszPath;
 }
 
 inline std::wstring vmsGetModulePath (HMODULE hMod = NULL)
 {
 	wchar_t wszPath [MAX_PATH] = L"";
-	GetModuleFileName (NULL, wszPath, _countof (wszPath));
+	GetModuleFileName (hMod, wszPath, _countof (wszPath));
 
 	wchar_t *pwsz = wcsrchr (wszPath, '\\');
 	assert (pwsz);

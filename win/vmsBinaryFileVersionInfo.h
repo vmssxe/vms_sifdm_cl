@@ -116,7 +116,7 @@ protected:
 			while (static_cast <int> (pb - (LPBYTE)pvVer) < static_cast <int> (dwSize) - 8*2);
 		}
 
-		LPTSTR atszValueName [] = {
+                LPCTSTR atszValueName [] = {
 			_T ("ProductVersion"),
 			_T ("ProductName"),
 			_T ("FileDescription"),
@@ -159,7 +159,7 @@ protected:
 			}
 		}
 
-		for (int i = 0; i < sizeof (atszValueName) / sizeof (LPTSTR); i++)
+                for (int i = 0; i < sizeof (atszValueName) / sizeof (LPCTSTR); i++)
 		{
 			TCHAR tsz [200];
 			if (tstrLng.empty ())

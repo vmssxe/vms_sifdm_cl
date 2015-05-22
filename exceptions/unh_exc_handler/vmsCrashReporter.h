@@ -55,7 +55,8 @@ public:
 	}
 
 protected:
-	static void GenerateXml (LPCTSTR ptszAppName, LPCTSTR ptszVersion, LPCTSTR ptszDescription, 
+	static void GenerateXml (LPCTSTR ptszAppName, LPCTSTR ptszAppComponentName, 
+		LPCTSTR ptszVersion, LPCTSTR ptszDescription, 
 		LPCTSTR ptszFaultModule, DWORD dwGettingFaultModuleNameError, DWORD_PTR dwpCrashAddr, 
 		LPCSTR pszAdditionalXmlData, std::string& strResult)
 	{
@@ -64,6 +65,7 @@ protected:
 		strResult += "<CrashDumpInfo>\r\n";
 
 		strResult += "<Application Name=\""; strResult += vmsXmlUtil::toUtf8 (ptszAppName);
+		strResult += "\" Component=\""; strResult += vmsXmlUtil::toUtf8 (ptszAppComponentName);
 		strResult += "\" Version=\""; strResult += vmsXmlUtil::toUtf8 (ptszVersion);
 		strResult += "\" Platform=\"";
 #ifdef _WIN64

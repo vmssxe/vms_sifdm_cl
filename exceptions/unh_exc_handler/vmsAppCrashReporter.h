@@ -163,7 +163,7 @@ public:
 			if (pArgFaultModuleCrashAddr)
 				_stscanf (pArgFaultModuleCrashAddr->second.c_str (), _T ("%I64x"), &uCrashAddr);
 			assert (!appName.empty () && !appVersion.empty ());
-			vmsCrashReporter::GenerateXml (appName.c_str (), appVersion.c_str (),
+			vmsCrashReporter::GenerateXml (appName.c_str (), appPartName.c_str (), appVersion.c_str (),
 				user_description.c_str (), pArgFaultModule ? pArgFaultModule->second.c_str () : NULL, 
 				pArgGettingFaultModuleNameError ? (DWORD)_ttoi (pArgGettingFaultModuleNameError->second.c_str ()) : 0, 
 				(DWORD_PTR)uCrashAddr, NULL, strXml);

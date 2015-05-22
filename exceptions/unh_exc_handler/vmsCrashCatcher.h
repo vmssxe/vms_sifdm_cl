@@ -54,6 +54,11 @@ public:
 			prov->set_callback (fe_callback);
 	}
 
+	void Stop ()
+	{
+		m_excProviders.clear ();
+	}
+
 	void setLogExceptions (bool bSet = true)
 	{
 		try {

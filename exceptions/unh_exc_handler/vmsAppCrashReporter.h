@@ -94,7 +94,11 @@ protected:
 		tstrArgs += _ultow (flags, tsz, 10);
 		cl.setArgs (tstrArgs.c_str ());
 		cl.Execute ();
-		TerminateProcess (GetCurrentProcess (), 1);
+		
+		if (!(m_flags & DontTerminateProcess))
+			TerminateProcess (GetCurrentProcess (), 1);
+		else
+			vmsCrashCatcher::Stop (); // just in case
 	}
 
 public:

@@ -4,14 +4,23 @@ class vmsHooksPeCallsForLoadingModules :
 	public vmsHooksPeCalls
 {
 public:
-	vmsHooksPeCallsForLoadingModules (std::shared_ptr <vmsPeFnHook> hooker) :
+	enum 
+	{
+		DontHookGetProcAddress		= 1
+	};
+public:
+	vmsHooksPeCallsForLoadingModules (std::shared_ptr <vmsPeFnHook> hooker,
+		uint32_t flags = 0) :
 		vmsHooksPeCalls (hooker) 
 	{
 		assert (!ms_hooker); // singleton
 		ms_hooker = hooker;
 
-		m_hook_functions.push_back (
-			hook_fn_info ("kernel32.dll", "GetProcAddress", (FARPROC)myGetProcAddress));
+		if (!(flags & DontHookGetProcAddress))
+		{
+			m_hook_functions.push_back (
+				hook_fn_info ("kernel32.dll", "GetProcAddress", (FARPROC)myGetProcAddress));
+		}
 		m_hook_functions.push_back (
 			hook_fn_info ("kernel32.dll", "LoadLibraryA", (FARPROC)myLoadLibraryA));
 		m_hook_functions.push_back (

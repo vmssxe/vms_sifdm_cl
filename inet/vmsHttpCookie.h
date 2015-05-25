@@ -27,7 +27,7 @@ public:
 	}
 
 public:
-	virtual bool Serialize (vmsSerializationIoStream *pStm, unsigned flags /* = 0 */) override
+	virtual bool Serialize (vmsSerializationIoStream *pStm, unsigned flags = 0) override
 	{
 		int subdomains = m_validForSubdomains, secure = m_secure;
 		auto result = pStm->SerializeValue (L"domain", m_domain) &&

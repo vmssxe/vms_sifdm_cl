@@ -27,14 +27,6 @@ public:
 		m_targetHost (targetHost),
 		m_targetPath (targetPath) 
 	{
-		if (m_wstrAppPartName.empty ())
-		{
-			WCHAR wszModule [MAX_PATH] = L"";
-			GetModuleFileName (nullptr, wszModule, _countof (wszModule));
-			LPCWSTR module_name = wcsrchr (wszModule, '\\');
-			if (module_name)
-				m_wstrAppPartName = ++module_name;
-		}
 	}
 
 	~vmsAppCrashReporter(void) 

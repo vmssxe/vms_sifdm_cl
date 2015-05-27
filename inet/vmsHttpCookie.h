@@ -7,7 +7,7 @@ public:
 	bool m_validForSubdomains = false;
 	std::wstring m_path;
 	bool m_secure = false;
-	time_t m_expire = 0;
+	time_t m_expires = 0;
 	std::wstring m_name;
 	std::wstring m_value;
 
@@ -20,7 +20,7 @@ public:
 			SEP <<	(m_validForSubdomains ? "TRUE" : "FALSE") <<
 			SEP << utf8FromWide (m_path) <<
 			SEP << (m_secure ? "TRUE" : "FALSE") <<
-			SEP << m_expire << 
+			SEP << m_expires << 
 			SEP << utf8FromWide (m_name) <<
 			SEP << utf8FromWide (m_value);
 		return result.str ();
@@ -34,7 +34,7 @@ public:
 			pStm->SerializeValueS (L"valid_for_subdomains", subdomains) &&
 			pStm->SerializeValue (L"path", m_path) &&
 			pStm->SerializeValueS (L"secure", secure) &&
-			pStm->SerializeValueS (L"expire", m_expire) &&
+			pStm->SerializeValueS (L"expires", m_expires) &&
 			pStm->SerializeValue (L"name", m_name) &&
 			pStm->SerializeValue (L"value", m_value);
 		m_validForSubdomains = subdomains != 0;

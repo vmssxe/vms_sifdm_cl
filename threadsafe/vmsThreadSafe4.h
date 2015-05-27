@@ -20,5 +20,5 @@ private:
 	vmsThreadSafe4& operator = (const vmsThreadSafe4&) = delete;
 };
 
-#define vmsThreadSafe4Scope auto autoLock = vmsLockable2::LockAuto ()
+#define vmsThreadSafe4Scope auto autoLock = vmsThreadSafe4::LockAuto ()
 #define vmsThreadSafe4ScopeUnlock autoLock.unlock ()

@@ -9,10 +9,14 @@ public:
 		return m_items;
 	}
 
+	virtual ~vmsSerializableObjVector () {}
+
 protected:
 	std::vector <T> m_items;
 
 protected:
+	// pStm can be used to identify the type of object
+	// no serialization must be done here
 	virtual T create_obj (vmsSerializationIoStream *pStm) = 0;
 
 public:

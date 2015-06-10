@@ -48,4 +48,8 @@ public:
 	virtual void Lock () const override {obj.Lock ();} \
 	virtual void Unlock () const override {obj.Unlock ();}
 
+#define vmsLockable_ImplementDelegatedTo2(obj) \
+	virtual void Lock () const override {obj.lock ();} \
+	virtual void Unlock () const override {obj.unlock ();}
+
 #define vmsLockableScope vmsLockableAutolock<vmsLockable> lockObj (this)

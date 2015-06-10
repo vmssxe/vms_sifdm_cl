@@ -33,7 +33,7 @@ public:
 					return false;
 				if (!obj->Serialize (node.get (), flags))
 					return false;
-				m_items.push_back (std::move (obj));
+				add_item (std::move (obj));
 			}
 		}
 		else
@@ -46,6 +46,13 @@ public:
 					return false;
 			}
 		}
+		return true;
+	}
+
+protected:
+	virtual bool add_item (T obj)
+	{
+		m_items.push_back (std::move (obj));
 		return true;
 	}
 };

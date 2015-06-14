@@ -14,6 +14,18 @@ inline void vmsGetPath (LPCTSTR pszFile, LPTSTR pszPath)
 }
 
 
+template <typename T>
+T vmsFileNameFromPath (const T& path)
+{
+	auto pos = path.rfind ('\\');
+	if (pos == path.npos)
+		pos = path.rfind ('/');
+	if (pos == path.npos)
+		return path;
+	return T (path.begin () + pos + 1, path.end ());
+}
+
+
 inline BOOL vmsBuildPath (LPCTSTR pszPath)
 {
 	int len = (int)_tcslen (pszPath);

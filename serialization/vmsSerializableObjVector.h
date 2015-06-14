@@ -56,3 +56,15 @@ protected:
 		return true;
 	}
 };
+
+
+template <class T>
+class vmsSerializableSharedObjVector :
+	public vmsSerializableObjVector <std::shared_ptr <T>>
+{
+public:
+	virtual std::shared_ptr <T> create_obj (vmsSerializationIoStream *pStm) override
+	{
+		return std::make_shared <T> ();
+	}
+};

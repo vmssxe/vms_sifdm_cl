@@ -29,13 +29,13 @@ public:
 
 	virtual bool isDirty () const 
 	{
-		auto lock = LockAuto ();
+		vmsLockableScope;
 		return m_bDirty;
 	}
 
 	virtual void setDirty (bool bSet = true) 
 	{
-		auto lock = LockAuto ();
+		vmsLockableScope;
 		m_bDirty = bSet;
 	}
 

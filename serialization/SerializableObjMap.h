@@ -47,10 +47,10 @@ public:
 		{
 			for (const auto &item : m_items)
 			{
-				auto node = pStm->SelectOrCreateNode (L"item-id");
+				auto node = pStm->SelectOrCreateNode (L"item");
 				assert (node);
 				auto id = item.first;
-				if (!node->SerializeValueS (L"id", id) ||
+				if (!node->SerializeValueS (L"item-id", id) ||
 					!item.second->Serialize (node.get (), flags))
 				{
 					return false;

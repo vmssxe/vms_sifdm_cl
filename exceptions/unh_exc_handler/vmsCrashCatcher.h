@@ -15,6 +15,7 @@ public:
 		CatchCrtExceptions					= 1 << 1,
 		UseVectoredExceptionsHandler		= 1 << 2,
 		CatchThisModuleExceptionsOnly		= 1 << 3,
+		DumpWithFullMemory					= 1 << 4,
 	};
 
 	enum
@@ -116,7 +117,7 @@ protected:
 		return EXCEPTION_CONTINUE_SEARCH;
 	}
 
-	static tstring CreateDump (PEXCEPTION_POINTERS pEP, DWORD thread_id)
+	tstring CreateDump (PEXCEPTION_POINTERS pEP, DWORD thread_id) const
 	{
 		// create crash dump file
 
@@ -136,8 +137,17 @@ protected:
 		if (hFile == INVALID_HANDLE_VALUE)
 			return 0;
 
-		BOOL bDumpCreated = MiniDumpWriteDump (GetCurrentProcess(), GetCurrentProcessId(), hFile, 
-			(MINIDUMP_TYPE) (MiniDumpScanMemory | MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithDataSegs | MiniDumpWithProcessThreadData),
+		DWORD dump_type = 
+			MiniDumpScanMemory | 
+			MiniDumpWithIndirectlyReferencedMemory | 
+			MiniDumpWithDataSegs | 
+			MiniDumpWithProcessThreadData;
+
+		if (m_flags & DumpWithFullMemory)
+			dump_type |= MiniDumpWithFullMemory;
+
+		BOOL bDumpCreated = MiniDumpWriteDump (GetCurrentProcess(), 
+			GetCurrentProcessId(), hFile, (MINIDUMP_TYPE) dump_type, 
 			&eInfo, NULL, NULL);
 
 		CloseHandle (hFile);

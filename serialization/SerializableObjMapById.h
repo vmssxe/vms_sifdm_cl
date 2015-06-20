@@ -20,11 +20,8 @@ public:
 	{
 		{
 			vmsLockableScope;
-			auto it = m_items.find (id);
-			assert (it != m_items.end ());
-			if (it == m_items.end ())
-				return;
-			m_items.erase (it);
+			if (!remove_item_ (id))
+				return;			
 		}
 		setDirty ();
 	}
@@ -40,6 +37,18 @@ protected:
 	{
 		m_next_id = max (m_next_id, id+1);
 		return base_t::add_item (id, obj);
+	}
+
+protected:
+	// object must be locked
+	virtual bool remove_item_ (TKey id)
+	{
+		auto it = m_items.find (id);
+		assert (it != m_items.end ());
+		if (it == m_items.end ())
+			return false;
+		m_items.erase (it);
+		return true;
 	}
 };
 	

@@ -13,8 +13,16 @@ public:
 
 	~vmsLockableAutolock ()
 	{
+		unlock ();
+	}
+
+	void unlock ()
+	{
 		if (m_pObject)
+		{
 			m_pObject->Unlock ();
+			m_pObject = nullptr;
+		}
 	}
 
 protected:
@@ -53,3 +61,4 @@ public:
 	virtual void Unlock () const override {obj.unlock ();}
 
 #define vmsLockableScope vmsLockableAutolock<vmsLockable> lockObj (this)
+#define vmsLockableScopeUnlock lockObj.unlock ()

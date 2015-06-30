@@ -7,6 +7,7 @@
 #include "vmsWinHandle.h"
 #include "vmsCriticalSection.h"
 #include "serialization/vmsSerializable.h"
+#include "serialization/vmsSerializationStreamBinding.h"
 #include "error/vmsError.h"
 #include "win/windows_error.h"
 #include "inet/http_error.h"

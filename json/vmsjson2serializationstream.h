@@ -75,7 +75,7 @@ public:
 			return false;
 		if (!m_spBoundStream)
 			return true;
-		picojson::parse (m_node, *m_spBoundStream.get ());
+		return picojson::parse (m_node, *m_spBoundStream.get ()).empty ();
 	}
 
 protected:

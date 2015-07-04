@@ -23,6 +23,8 @@ protected:
 public:
 	virtual bool Serialize (vmsSerializationIoStream *pStm, unsigned flags /* = 0 */) override
 	{
+		TKey id;
+
 		vmsLockableScope;
 
 		if (pStm->isInputStream ())
@@ -31,13 +33,10 @@ public:
 			auto nodes = pStm->SelectNodes (L"item");
 			for (const auto &node : nodes)
 			{
-				TKey id;
-				if (!node->SerializeValueS (L"item-id", id))
-					return false;
 				auto obj = create_obj (node.get ());
 				if (!obj)
 					return false;
-				if (!obj->Serialize (node.get (), flags))
+				if (!serialize_item (id, obj, node.get (), flags))
 					return false;
 				assert (m_items.find (id) == m_items.end ());
 				add_item (id, obj);
@@ -50,11 +49,8 @@ public:
 				auto node = pStm->SelectOrCreateNode (L"item");
 				assert (node);
 				auto id = item.first;
-				if (!node->SerializeValueS (L"item-id", id) ||
-					!item.second->Serialize (node.get (), flags))
-				{
+				if (!serialize_item (id, item.second, node.get (), flags))
 					return false;
-				}
 			}
 		}
 
@@ -62,6 +58,14 @@ public:
 	}
 
 protected:
+	virtual bool serialize_item (TKey &id, 
+		const std::shared_ptr <TObj> &obj, 
+		vmsSerializationIoStream *pStm, unsigned flags)
+	{
+		return pStm->SerializeValueS (L"item-id", id) &&
+			obj->Serialize (pStm, flags);
+	}
+
 	virtual bool add_item (TKey id, const std::shared_ptr <TObj> &obj)
 	{
 		m_items [id] = obj;

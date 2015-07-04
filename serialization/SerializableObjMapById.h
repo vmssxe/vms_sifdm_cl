@@ -47,8 +47,11 @@ protected:
 		assert (it != m_items.end ());
 		if (it == m_items.end ())
 			return false;
+		on_removing_item (it);
 		m_items.erase (it);
 		return true;
 	}
+	
+	virtual void on_removing_item (typename container_t::iterator) {}
 };
 	

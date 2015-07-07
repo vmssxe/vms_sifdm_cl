@@ -100,9 +100,10 @@ public:
 		{
 			if (pfMajor)
 			{
-				TCHAR tsz [100];
-				_stprintf (tsz, _T ("%s.%s"), at (0).toString ().c_str (), at (1).toString ().c_str ());
-				_stscanf (tsz, _T ("%f"), pfMajor);
+				tstringstream tss;
+				tss.imbue (std::locale ("C"));
+				tss << at (0).toString () << _T(".") << at (1).toString ();
+				tss >> *pfMajor;
 			}
 		}
 
@@ -118,9 +119,10 @@ public:
 		}
 		else if (size () > 3)
 		{
-			TCHAR tsz [100];
-			_stprintf (tsz, _T ("%s.%s"), at (2).toString ().c_str (), at (3).toString ().c_str ());
-			_stscanf (tsz, _T ("%f"), pfMinor);
+			tstringstream tss;
+			tss.imbue (std::locale ("C"));
+			tss << at (2).toString () << _T (".") << at (3).toString ();
+			tss >> *pfMinor;
 		}
 	}
 

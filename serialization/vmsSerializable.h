@@ -127,6 +127,7 @@ public:
 		pS->setDirty (bSet);
 	}
 
+	// WARNING: is not for use with ENUM_STREAM_SUPPORT_BEGIN macro
 	template <class TEnum>
 	static bool SerializeEnum (vmsSerializationIoStream *pStm, const std::wstring& name, TEnum &enVal, bool bOptional = false)
 	{

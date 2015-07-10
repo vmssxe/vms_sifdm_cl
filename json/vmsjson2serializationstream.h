@@ -28,26 +28,36 @@ public:
 	{
 		std::vector <vmsSerializationInputStream::tSP> vResult;
 		
-		assert (m_node.is<picojson::object> ());
-		if (!m_node.is<picojson::object> ())
-			return vResult;
-		auto&& obj = m_node.get <picojson::object> ();
+		assert (m_node.is<picojson::object> () || m_node.is<picojson::array> ());
 
-		std::string strName (utf8FromWide (wstrName));
+		picojson::array *arr = nullptr;
 
-		auto it = obj.find (strName);
-		if (it == obj.end ())
-			return vResult;
-
-		assert (it->second.is<picojson::array>());
-		if (!it->second.is<picojson::array>())
-			return vResult;
-		auto&& arr = it->second.get <picojson::array> ();
-
-		for (const auto &val : arr)
+		if (m_node.is<picojson::object> ())
 		{
-			tSP spResult = std::make_shared <vmsJson2SerializationInputStream> (val);
-			vResult.push_back (spResult);
+			auto&& obj = m_node.get <picojson::object> ();
+
+			std::string strName (utf8FromWide (wstrName));
+
+			auto it = obj.find (strName);
+			if (it == obj.end ())
+				return vResult;
+
+			assert (it->second.is<picojson::array> ());
+			if (it->second.is<picojson::array> ())
+				arr = &it->second.get <picojson::array> ();
+		}
+		else if (m_node.is<picojson::array> ())
+		{
+			arr = &m_node.get <picojson::array> ();
+		}
+
+		if (arr)
+		{
+			for (const auto &val : *arr)
+			{
+				tSP spResult = std::make_shared <vmsJson2SerializationInputStream> (val);
+				vResult.push_back (spResult);
+			}
 		}
 
 		return vResult;
@@ -183,17 +193,24 @@ protected:
 	{
 		picojson::value retVal = m_node;
 		auto&& obj = retVal.get<picojson::object>();
+		bool has_different_elemtns = !obj.empty ();
 		for (auto it = m_mChildNodes.begin (); it != m_mChildNodes.end (); ++it)
 		{
 			picojson::value::array arr;
 			auto itNext (it); ++itNext;
 			for (auto it2 = itNext; it2 != m_mChildNodes.end () && it->first == it2->first; ++it2, ++it)
 				arr.push_back (it->second->getResultingJsonValue ());
+			itNext = it; ++itNext;
+			if (itNext != m_mChildNodes.end ())
+				has_different_elemtns = true;
 			
 			if (!arr.empty ())
 			{
 				arr.push_back (it->second->getResultingJsonValue ());
-				obj [utf8FromWide (it->first)] = picojson::value (arr);
+				if (!has_different_elemtns)
+					return picojson::value (arr);
+				else
+					obj [utf8FromWide (it->first)] = picojson::value (arr);
 			}
 			else
 			{

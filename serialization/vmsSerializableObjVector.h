@@ -11,7 +11,7 @@ public:
 	{
 		{
 			vmsLockableScope;
-			add_item_ (obj);
+			add_item_ (std::move (obj));
 		}
 		setDirty ();
 	}

@@ -90,6 +90,13 @@ namespace base64 {
 		return strlen (s);
 	}
 
+	inline std::string encode (const std::string &str)
+	{
+		std::string result;
+		encode (&str.front (), str.length (), result);
+		return result;
+	}
+
 	inline int decode (const char *str, void *data)
 	{
 		const char *p;
@@ -146,5 +153,14 @@ namespace base64 {
 				*q++ = (c & 0x000000ff) >> 0;
 		}
 		return q - (unsigned char*)data;
+	}
+
+	inline std::string decode (const std::string &str)
+	{
+		std::string result;
+		result.resize (str.size ());
+		auto len = decode (&str.front (), &result.front ());
+		result.resize (len);
+		return result;
 	}
 };

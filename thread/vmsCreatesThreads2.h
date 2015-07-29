@@ -67,6 +67,7 @@ protected:
 		{
 			if ((*it)->get_id () == this_id)
 			{
+				(*it)->detach ();
 				m_threads.erase (it);
 				return;
 			}

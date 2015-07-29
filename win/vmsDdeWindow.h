@@ -15,7 +15,7 @@ public:
 	{
 	}
 
-	BEGIN_MSG_MAP (DdeWindow)
+	BEGIN_MSG_MAP (vmsDdeWindow)
 		MESSAGE_HANDLER (WM_COPYDATA, OnCopyData)
 		MESSAGE_HANDLER (WM_DESTROY, OnDestroy)
 	END_MSG_MAP ()

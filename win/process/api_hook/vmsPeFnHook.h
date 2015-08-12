@@ -187,6 +187,15 @@ public:
 		return m_vFunctions [nIndex].pfnOriginal;
 	}
 
+	FARPROC getTargetFunction(FARPROC pfnHook)
+	{
+		vmsAUTOLOCKSECTION(m_csFunctions);
+		SSIZE_T nIndex = findFunctionIndexByHookFnAddr(pfnHook);
+		if (nIndex == -1)
+			return NULL;
+		return m_vFunctions[nIndex].pfnTarget;
+	}
+
 	// can be called to hook all functions in the new loaded module
 	void onNewModuleLoaded(HMODULE hModule)
 	{

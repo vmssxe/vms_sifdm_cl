@@ -40,17 +40,17 @@ protected:
 	static std::shared_ptr <vmsPeFnHook> ms_hooker;
 
 protected:
-	static HMODULE WINAPI myLoadLibraryA (LPCSTR lpFileName)
+	static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
 	{
 		return onLoadLibrary (lpFileName, false);
 	}
 
-	static HMODULE WINAPI myLoadLibraryW (LPCWSTR lpFileName)
+	static HMODULE WINAPI myLoadLibraryW(LPCWSTR lpFileName)
 	{
 		return onLoadLibrary (lpFileName, true);
 	}
 
-	static HMODULE onLoadLibrary (LPCVOID lpFileName, bool bUnicode)
+	static HMODULE onLoadLibrary(LPCVOID lpFileName, bool bUnicode)
 	{
 		typedef HMODULE (WINAPI *FNLoadLibrary)(LPCVOID lpFileName);
 
@@ -70,17 +70,17 @@ protected:
 		return hMod;
 	}
 
-	static HMODULE WINAPI myLoadLibraryExA (LPCSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+	static HMODULE WINAPI myLoadLibraryExA(LPCSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 	{
 		return onLoadLibraryEx (lpFileName, hFile, dwFlags, false);
 	}
 
-	static HMODULE WINAPI myLoadLibraryExW (LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
+	static HMODULE WINAPI myLoadLibraryExW(LPCWSTR lpFileName, HANDLE hFile, DWORD dwFlags)
 	{
 		return onLoadLibraryEx (lpFileName, hFile, dwFlags, true);
 	}
 
-	static HMODULE onLoadLibraryEx (LPCVOID lpFileName, HANDLE hFile, DWORD dwFlags, bool bUnicode)
+	static HMODULE onLoadLibraryEx(LPCVOID lpFileName, HANDLE hFile, DWORD dwFlags, bool bUnicode)
 	{
 		typedef HMODULE (WINAPI *FNLoadLibraryEx)(LPCVOID lpFileName, HANDLE hFile, DWORD dwFlags);
 		assert (ms_hooker);
@@ -105,6 +105,10 @@ protected:
 
 	static FARPROC WINAPI myGetProcAddress (HMODULE hModule, LPCSTR pszProcName)
 	{
+		typedef FARPROC(WINAPI *FNGetProcAddress)(HMODULE hModule, LPCSTR pszProcName);
+
+		static int preventRecursiveCallsCounter = 0;
+
 		assert (ms_hooker);
 		FARPROC pfn = ms_hooker->onGetProcAddress (hModule, pszProcName);
 		if (pfn)
@@ -112,13 +116,22 @@ protected:
 			// make sure it's not a madness call
 			// (e.g. Firefox make such calls)
 			// if not - return hooked fn, if yes (oops) - return the original one to avoid possible crash
-			if (stricmp (pszProcName, "GetProcAddress") || hModule != GetModuleHandle (L"kernel32.dll"))
+			if (stricmp(pszProcName, "GetProcAddress") != 0 || hModule != GetModuleHandle(L"kernel32.dll"))
 				return pfn;
 		}
-		typedef FARPROC (WINAPI *FNGetProcAddress)(HMODULE hModule, LPCSTR pszProcName);
-		FNGetProcAddress pfnGA = (FNGetProcAddress)ms_hooker->getOriginalFunction ((FARPROC)myGetProcAddress);
-		assert (pfnGA != NULL);
-		return pfnGA (hModule, pszProcName);
+
+		FNGetProcAddress pfnGA = NULL;
+		if (preventRecursiveCallsCounter)
+			pfnGA = (FNGetProcAddress)ms_hooker->getTargetFunction((FARPROC)myGetProcAddress);
+		else
+			pfnGA = (FNGetProcAddress)ms_hooker->getOriginalFunction((FARPROC)myGetProcAddress);
+		assert(pfnGA != NULL);
+
+		++preventRecursiveCallsCounter;
+		pfn = pfnGA(hModule, pszProcName);
+		--preventRecursiveCallsCounter;
+
+		return pfn;
 	}
 };
 

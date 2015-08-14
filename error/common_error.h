@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../config.h"
+
 namespace common_error {
 
 enum common_error	{

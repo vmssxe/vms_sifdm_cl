@@ -6,14 +6,17 @@ public:
 	vmsHooksPeCalls (std::shared_ptr <vmsPeFnHook> hooker) :
 		m_hooker (hooker) {}
 
-	virtual bool hook ()
+	virtual bool hook(bool skipWindowsCompatibleModules = false)
 	{
 		bool result = true;
 
 		for (auto& fn : m_hook_functions)
 		{
-			if (!m_hooker->HookFunction (fn.importingModuleName, fn.targetFuncName, fn.hookFunction))
+			if (!m_hooker->HookFunction(fn.importingModuleName, fn.targetFuncName,
+				fn.hookFunction, skipWindowsCompatibleModules))
+			{
 				result = false;
+			}
 		}
 
 		return result;

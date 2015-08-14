@@ -1,5 +1,8 @@
 #pragma once
+#include <algorithm>
 #include "vmsPeTools.h"
+#include "../../tools.h"
+
 class vmsPeFnHook :
 	public vmsCreatesThreads2
 {
@@ -25,7 +28,8 @@ protected:
 	};
 
 public:
-	bool HookFunction(LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnNew)
+	bool HookFunction(LPCSTR pszImportingModuleName, LPCSTR pszTargetFuncName, FARPROC pfnNew,
+					  bool skipWindowsCompatibleModules = false)
 	{
 		assert (pszImportingModuleName);
 		assert (pszTargetFuncName);
@@ -72,6 +76,8 @@ public:
 			{
 				if (!vmsCheckModuleHandleValid (me.hModule))
 					continue; // todo: make it better (wait for the module to be loaded)
+				if (skipWindowsCompatibleModules && isWindowsCompatibleLayerModule(me.hModule))
+					continue;
 				if (HookFunctionInModule (me.hModule, r_fi))
 					replaced = true;
 			}
@@ -81,6 +87,26 @@ public:
 	}
 
 protected:
+	static bool isWindowsCompatibleLayerModule(HMODULE module)
+	{
+		std::wstring modulePath = vmsGetModuleFileName(module);
+		if (modulePath.empty())
+			return false;
+
+		TCHAR path[MAX_PATH] = { 0 };
+		GetSystemWindowsDirectory(path, _countof(path));
+		std::wstring compatibleLayerFolder(path);
+		compatibleLayerFolder += L"\\apppatch\\";
+
+		std::transform(modulePath.begin(), modulePath.end(), modulePath.begin(), towlower);
+		std::transform(compatibleLayerFolder.begin(), compatibleLayerFolder.end(), compatibleLayerFolder.begin(), towlower);
+
+		if (modulePath.find(compatibleLayerFolder) != 0)
+			return false;
+
+		return true;
+	}
+
 	bool HookFunctionInModule (HMODULE mod, FunctionInfo &fi, 
 		bool updateOriginalFunction = false)
 	{

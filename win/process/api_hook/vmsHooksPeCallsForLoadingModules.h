@@ -1,5 +1,7 @@
 #pragma once
 #include "vmsHooksPeCalls.h"
+#include "../../../threadsafe/win/vmsTls.h"
+
 class vmsHooksPeCallsForLoadingModules :
 	public vmsHooksPeCalls
 {
@@ -15,7 +17,7 @@ public:
 	{
 		assert (!ms_hooker); // singleton
 		ms_hooker = hooker;
-
+		
 		if (!(flags & DontHookGetProcAddress))
 		{
 			m_hook_functions.push_back (
@@ -38,6 +40,7 @@ public:
 
 protected:
 	static std::shared_ptr <vmsPeFnHook> ms_hooker;
+	static vmsTls m_tls;
 
 protected:
 	static HMODULE WINAPI myLoadLibraryA(LPCSTR lpFileName)
@@ -107,7 +110,7 @@ protected:
 	{
 		typedef FARPROC(WINAPI *FNGetProcAddress)(HMODULE hModule, LPCSTR pszProcName);
 
-		static int preventRecursiveCallsCounter = 0;
+		uintptr_t preventRecursiveCallsCounter = (m_tls.isTlsAllocatedSuccessfully()) ? (uintptr_t)m_tls.getValue() : 0;
 
 		assert (ms_hooker);
 		FARPROC pfn = ms_hooker->onGetProcAddress (hModule, pszProcName);
@@ -116,7 +119,7 @@ protected:
 			// make sure it's not a madness call
 			// (e.g. Firefox make such calls)
 			// if not - return hooked fn, if yes (oops) - return the original one to avoid possible crash
-			if (stricmp(pszProcName, "GetProcAddress") != 0 || hModule != GetModuleHandle(L"kernel32.dll"))
+			if (!(stricmp(pszProcName, "GetProcAddress") == 0 && hModule == GetModuleHandle(L"kernel32.dll")))
 				return pfn;
 		}
 
@@ -126,14 +129,18 @@ protected:
 		else
 			pfnGA = (FNGetProcAddress)ms_hooker->getOriginalFunction((FARPROC)myGetProcAddress);
 		assert(pfnGA != NULL);
+		
+		if (m_tls.isTlsAllocatedSuccessfully())
+			m_tls.setValue((LPVOID)++preventRecursiveCallsCounter);
 
-		++preventRecursiveCallsCounter;
 		pfn = pfnGA(hModule, pszProcName);
-		--preventRecursiveCallsCounter;
+
+		if (m_tls.isTlsAllocatedSuccessfully())
+			m_tls.setValue((LPVOID)--preventRecursiveCallsCounter);
 
 		return pfn;
 	}
 };
 
 __declspec (selectany) std::shared_ptr <vmsPeFnHook> vmsHooksPeCallsForLoadingModules::ms_hooker;
-
+__declspec (selectany) vmsTls vmsHooksPeCallsForLoadingModules::m_tls;

@@ -1,5 +1,6 @@
 #pragma once
 #include <system_error>
+#include "../stringh.h"
 #include "common_error.h"
 #include "vmsErrorSource.h"
 #include "vmsErrorDetails.h"

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../serialization/vmsSerializable.h"
+#include "../error/vmsError.h"
+#include "windows_error.h"
 #include "vmsFileUtil.h"
 #include <TlHelp32.h>
 #include <ShellAPI.h>

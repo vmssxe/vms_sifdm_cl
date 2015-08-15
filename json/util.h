@@ -12,3 +12,12 @@ std::string vmsJsonSerializeObject (TObject& obj, unsigned flags = 0)
 	json.Flush ();
 	return ss->str ();
 }
+
+template <class TObject>
+bool vmsJsonSerializeObject (TObject& obj, const std::string &data, unsigned flags = 0)
+{
+	auto ss = std::make_shared <std::stringstream> (data);
+	JsonSerializationInputStreamClass json;
+	json.BindToStream (ss);
+	return obj.Serialize (&vmsSerializationIoStream (&json), flags);
+}

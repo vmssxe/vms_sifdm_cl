@@ -47,7 +47,7 @@ namespace base64 {
 		for (const char * p = base64; *p; p++)
 		{
 			if (*p == c)
-				return p - base64;
+				return int (p - base64);
 		}
 		return -1;
 	}
@@ -87,7 +87,7 @@ namespace base64 {
 		}
 		result.resize (static_cast <size_t> (p - s));
 		*p = 0;
-		return strlen (s);
+		return (int)strlen (s);
 	}
 
 	inline std::string encode (const std::string &str)
@@ -152,7 +152,7 @@ namespace base64 {
 			if (done < 1)
 				*q++ = (c & 0x000000ff) >> 0;
 		}
-		return q - (unsigned char*)data;
+		return int (q - (unsigned char*)data);
 	}
 
 	inline std::string decode (const std::string &str)

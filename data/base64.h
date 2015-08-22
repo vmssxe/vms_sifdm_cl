@@ -52,10 +52,10 @@ namespace base64 {
 		return -1;
 	}
 
-	inline int encode (const void *data, size_t size, std::string& result)
+	inline void encode (const void *data, size_t size, std::string& result)
 	{
 		char *s, *p;
-		size_t i;
+
 		int c;
 		unsigned char *q;
 
@@ -64,8 +64,9 @@ namespace base64 {
 		p = s = &result.front ();
 
 		q = (unsigned char*)data;
-		i = 0;
-		for (i = 0; i < size;){
+
+		for (size_t i = 0; i < size;)
+		{
 			c = q [i++];
 			c *= 256;
 			if (i < size)
@@ -85,9 +86,8 @@ namespace base64 {
 				p [2] = '=';
 			p += 4;
 		}
+
 		result.resize (static_cast <size_t> (p - s));
-		*p = 0;
-		return (int)strlen (s);
 	}
 
 	inline std::string encode (const std::string &str)
@@ -99,13 +99,13 @@ namespace base64 {
 
 	inline int decode (const char *str, void *data)
 	{
-		const char *p;
 		unsigned char *q;
 		int c;
 		int x;
 		int done = 0;
 		q = (unsigned char*)data;
-		for (p = str; *p && !done; p += 4){
+		for (const char *p = str; *p && !done; p += 4)
+		{
 			x = pos (p [0]);
 			if (x >= 0)
 				c = x;
@@ -160,6 +160,8 @@ namespace base64 {
 		std::string result;
 		result.resize (str.size ());
 		auto len = decode (&str.front (), &result.front ());
+		if (len == -1)
+			return {};
 		result.resize (len);
 		return result;
 	}

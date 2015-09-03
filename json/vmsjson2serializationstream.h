@@ -42,9 +42,17 @@ public:
 			if (it == obj.end ())
 				return vResult;
 
-			assert (it->second.is<picojson::array> ());
 			if (it->second.is<picojson::array> ())
+			{
 				arr = &it->second.get <picojson::array> ();
+			}
+			else
+			{
+				vResult.push_back (
+					std::make_shared <vmsJson2SerializationInputStream> (it->second));
+				return vResult;
+			}
+
 		}
 		else if (m_node.is<picojson::array> ())
 		{

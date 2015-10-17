@@ -8,7 +8,7 @@ public:
 	  m_pObject (pObject)
 	{
 		if (m_pObject)
-			m_pObject->Lock ();
+			lock ();
 	}
 
 	~vmsLockableAutolock ()
@@ -16,17 +16,27 @@ public:
 		unlock ();
 	}
 
+	void lock ()
+	{
+		if (m_pObject && !m_locked)
+		{
+			m_pObject->Lock ();
+			m_locked = true;
+		}
+	}
+
 	void unlock ()
 	{
-		if (m_pObject)
+		if (m_pObject && m_locked)
 		{
 			m_pObject->Unlock ();
-			m_pObject = nullptr;
+			m_locked = false;
 		}
 	}
 
 protected:
 	const TLockable *m_pObject;
+	bool m_locked = false;
 
 private:
 	vmsLockableAutolock (const vmsLockableAutolock&);

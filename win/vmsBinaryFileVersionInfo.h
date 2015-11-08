@@ -164,12 +164,12 @@ protected:
 			TCHAR tsz [200];
 			if (tstrLng.empty ())
 			{
-				_stprintf (tsz, _T ("\\StringFileInfo\\%04x%04x\\%s"), pTranslate [nLang].wLanguage,
+				swprintf (tsz, _countof (tsz), _T ("\\StringFileInfo\\%04x%04x\\%s"), pTranslate [nLang].wLanguage,
 					pTranslate [nLang].wCodePage, atszValueName [i]);
 			}
 			else
 			{
-				_stprintf (tsz, _T ("\\StringFileInfo\\%s\\%s"), tstrLng.c_str (), atszValueName [i]);
+				swprintf (tsz, _countof (tsz), _T ("\\StringFileInfo\\%s\\%s"), tstrLng.c_str (), atszValueName [i]);
 			}
 			LPVOID pvValue;
 			UINT uValLen;

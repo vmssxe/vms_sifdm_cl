@@ -269,6 +269,8 @@ public:
 		vmsHttpBufferElements::ExtractToken (buff, m_strName);
 		if (buff.getByte () != ':')
 			buff.Throw (buff.ParseError);
+		while (buff.getByte (true) == ' ')
+			buff.getByte ();
 		ExtractFieldValue (buff, m_strValue);
 		if (buff.getByte () != '\r' || buff.getByte () != '\n')
 			buff.Throw (buff.ParseError);

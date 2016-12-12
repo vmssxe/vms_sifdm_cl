@@ -80,7 +80,7 @@ protected:
 		{
 			WORD wLanguage;
 			WORD wCodePage;
-		} *pTranslate;
+		} *pTranslate = 0;
 
 		UINT uLen;
 
@@ -93,30 +93,59 @@ protected:
 				return bOK;
 			VS_FIXEDFILEINFO *p = (VS_FIXEDFILEINFO*)pb;
 			pb += uLen;
-			while (DWORD (pb - (LPBYTE)pvVer) < (dwSize - (DWORD)wcslen (L"StringFileInfo")) && wcsncmp ((LPWSTR)pb, L"StringFileInfo", wcslen (L"StringFileInfo")))
+			// try to find "StringFileInfo" block
+			const auto StringFileInfoLen = wcslen (L"StringFileInfo");
+			while (DWORD (pb - (LPBYTE)pvVer) < (dwSize - (DWORD)StringFileInfoLen) && wcsncmp ((LPWSTR)pb, L"StringFileInfo", StringFileInfoLen))
 				pb++;
-			if (DWORD (pb - (LPBYTE)pvVer) >= (dwSize - (DWORD)wcslen (L"StringFileInfo")))
-				return bOK;
-			pb += (wcslen (L"StringFileInfo") + 1) * 2;
+			if (DWORD (pb - (LPBYTE)pvVer) >= (dwSize - (DWORD)StringFileInfoLen))
+				return bOK; // not found
+			// found, skip the header
+			pb += (StringFileInfoLen + 1) * 2;
+			// skip child header (https://msdn.microsoft.com/en-us/library/windows/desktop/ms646987%28v=vs.85%29.aspx)
 			pb += 3*sizeof (WORD);
-			do {
-				while (static_cast <int> (pb - (LPBYTE)pvVer) < static_cast <int> (dwSize) - 8*2 && 
-					(wcslen ((LPWSTR)pb) < 8) )
+			// search for string with locale identifier (e.g. "040904b0")
+			const int LocNameKeyLen = 8;
+			const auto wcharsRemains = [&pb, &pvVer, &dwSize]()
+			{
+				return (dwSize - (static_cast<int>(pb - (LPBYTE)pvVer))) / 2;
+			};
+			const auto stringLen = [&pb, &wcharsRemains] ()
+			{
+				return wcsnlen ((LPWSTR)pb, wcharsRemains());
+			};
+			while (wcharsRemains() > LocNameKeyLen && 
+				stringLen() < wcharsRemains())
+			{
+				while (wcharsRemains() > LocNameKeyLen && 
+					stringLen() < LocNameKeyLen)
+				{
 					pb++;
+				}
+				if (wcharsRemains() <= LocNameKeyLen)
+					break;
+				// check if the string contains digits and letters only
 				LPWSTR pwsz = (LPWSTR)pb;
 				while (*pwsz && (isdigit (*pwsz) || isalpha (*pwsz)))
 					pwsz++;
 				if (*pwsz == 0)
 				{
+					// yes
 					USES_CONVERSION;
 					tstrLng = W2T ((LPWSTR)pb);
 					break;
 				}
+				else
+				{
+					// skip this string
+					pb += (stringLen()+1) * 2;
+				}
 			}
-			while (static_cast <int> (pb - (LPBYTE)pvVer) < static_cast <int> (dwSize) - 8*2);
 		}
 
-                LPCTSTR atszValueName [] = {
+		if (!pTranslate && tstrLng.empty())
+			return bOK;
+
+		LPCTSTR atszValueName [] = {
 			_T ("ProductVersion"),
 			_T ("ProductName"),
 			_T ("FileDescription"),
@@ -159,7 +188,7 @@ protected:
 			}
 		}
 
-                for (int i = 0; i < sizeof (atszValueName) / sizeof (LPCTSTR); i++)
+		for (int i = 0; i < sizeof (atszValueName) / sizeof (LPCTSTR); i++)
 		{
 			TCHAR tsz [200];
 			if (tstrLng.empty ())

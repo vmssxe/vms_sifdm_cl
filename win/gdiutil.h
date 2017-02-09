@@ -43,3 +43,24 @@ inline HBITMAP vmsCreateX32Bitmap (int cx, int cy)
 
 	return CreateDIBSection (NULL, &bmi, DIB_RGB_COLORS, (LPVOID*)&pdwPixels, NULL, 0);
 }
+
+// http://forums.codeguru.com/showthread.php?441251-CBitmap-to-HICON-or-HICON-from-HBITMAP
+// (c) ovidiucucu
+inline HICON vmsIconFromBitmap(HBITMAP hbmp)
+{
+	BITMAP bm = {0};
+	vmsGetBitmap(hbmp, bm);
+
+	HBITMAP hbmpMask = ::CreateCompatibleBitmap(
+		::GetDC(nullptr), bm.bmWidth, bm.bmHeight);
+
+	ICONINFO ii = {0};
+	ii.fIcon = TRUE;
+	ii.hbmColor = hbmp;
+	ii.hbmMask = hbmpMask;
+
+	HICON hIcon = ::CreateIconIndirect(&ii);
+	::DeleteObject (hbmpMask);
+
+	return hIcon;
+}

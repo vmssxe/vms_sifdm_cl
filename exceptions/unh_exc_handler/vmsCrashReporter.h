@@ -51,7 +51,7 @@ public:
 		req.AddPart ("zipfile", "report.zip", &vbZip[0], dwZipSize);
 		req.AddPart ("Submit", NULL, "Submit", 6);
 
-		return req.SendMultipart (ptszServerAddr, ptszScriptPath) != FALSE;
+		return req.SendMultipart (ptszServerAddr, ptszScriptPath, nullptr, INTERNET_DEFAULT_HTTP_PORT) != FALSE;
 	}
 
 protected:

@@ -60,7 +60,7 @@ public:
 		return TRUE;
 	}
 
-	BOOL Send (LPCTSTR ptszServer, LPCTSTR ptszFilePath, std::string *pstrResponse)
+	BOOL Send (LPCTSTR ptszServer, LPCTSTR ptszFilePath, std::string *pstrResponse, INTERNET_PORT port)
 	{
 		std::string str;
 		for (size_t i = 0; i < m_vParts.size (); i++)
@@ -71,12 +71,12 @@ public:
 			str += "=";
 			str += HttpEncode ((LPCSTR)m_vParts[i].pData);
 		}
-		return Send (ptszServer, ptszFilePath, str.c_str (), (DWORD)str.length (), _T ("application/x-www-form-urlencoded"), pstrResponse);
+		return Send (ptszServer, ptszFilePath, str.c_str (), (DWORD)str.length (), _T ("application/x-www-form-urlencoded"), pstrResponse, port);
 	}
 
 	BOOL SendMultipart (LPCTSTR ptszServer, LPCTSTR ptszFilePath, 
-		std::string *pstrResponse = nullptr,
-		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
+		std::string *pstrResponse,
+		INTERNET_PORT uPort)
 	{
 		m_last_error.clear ();
 
@@ -219,7 +219,7 @@ Content-Type: application/octet-stream\r\n\r\n",
 
 	BOOL Send (LPCTSTR ptszServer, LPCTSTR ptszFilePath, LPCVOID pvData, 
 		DWORD dwDataSize, LPCTSTR ptszContentType, std::string *pstrResponse,
-		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
+		INTERNET_PORT uPort)
 	{
 		m_last_error.clear ();
 
@@ -324,7 +324,7 @@ protected:
 	}
 
 	bool InitWinInetHandlesForRequest (LPCTSTR ptszServer, LPCTSTR ptszFilePath,
-		INTERNET_PORT uPort = INTERNET_DEFAULT_HTTP_PORT)
+		INTERNET_PORT uPort)
 	{
 		Close ();
 
@@ -350,9 +350,13 @@ protected:
 			return false;
 		}
 
+		auto flags = INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | 
+			INTERNET_FLAG_NO_UI | INTERNET_FLAG_PRAGMA_NOCACHE;
+		if (uPort == INTERNET_DEFAULT_HTTPS_PORT)
+			flags |= INTERNET_FLAG_SECURE;
+
 		m_hRequest = HttpOpenRequest (m_hConnect, _T ("POST"), ptszFilePath, NULL, NULL, NULL,
-			INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI |
-			INTERNET_FLAG_PRAGMA_NOCACHE, 0);
+			flags, 0);
 		if (m_hRequest == NULL)
 		{
 			m_last_error = windows_error::last_error ();

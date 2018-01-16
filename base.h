@@ -1,4 +1,9 @@
 #pragma once
+#include <string>
+#include <assert.h>
+#include <memory>
+#include <vector>
+#include <functional>
 #include "config.h"
 #include "verify.h"
 #include "make_sure.h"

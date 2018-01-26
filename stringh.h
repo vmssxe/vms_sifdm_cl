@@ -177,3 +177,8 @@ inline void word_wrap_string (tString& str, int line_size = 100)
 		}
 	}
 }
+
+inline std::wstring wideFromLatin(const std::string &s)
+{
+	return std::wstring(s.begin(), s.end());
+}

@@ -63,10 +63,12 @@ public:
 				break;
 
 			case GetFullCommandLine:
-				TCHAR tsz [MAX_PATH]; UINT nSize; nSize = MAX_PATH;
-				if (vmsWinUtil::GetProcessCommandLine (item.dwProcessId, tsz, &nSize))
-					item.cmdline.fromString (tsz);
+			{
+				auto cmdline = vmsWinUtil::GetProcessCommandLine (item.dwProcessId);
+				if (!cmdline.empty())
+					item.cmdline.fromString (cmdline.c_str());
 				break;
+			}
 			}
 
 			m_vItems.push_back (item);

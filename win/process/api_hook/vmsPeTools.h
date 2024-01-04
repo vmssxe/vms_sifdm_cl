@@ -2,6 +2,29 @@
 #include "../Toolhelp.h"
 #include "../../../../vms_sifdm_cl/win/process/util.h"
 
+typedef struct _IMAGE_DELAYLOAD_DESCRIPTOR_ {
+	union {
+		DWORD AllAttributes;
+		struct {
+			DWORD RvaBased : 1;             // Delay load version 2
+			DWORD ReservedAttributes : 31;
+		} DUMMYSTRUCTNAME;
+	} Attributes;
+
+	DWORD DllNameRVA;                       // RVA to the name of the target library (NULL-terminate ASCII string)
+	DWORD ModuleHandleRVA;                  // RVA to the HMODULE caching location (PHMODULE)
+	DWORD ImportAddressTableRVA;            // RVA to the start of the IAT (PIMAGE_THUNK_DATA)
+	DWORD ImportNameTableRVA;               // RVA to the start of the name table (PIMAGE_THUNK_DATA::AddressOfData)
+	DWORD BoundImportAddressTableRVA;       // RVA to an optional bound IAT
+	DWORD UnloadInformationTableRVA;        // RVA to an optional unload info table
+	DWORD TimeDateStamp;                    // 0 if not bound,
+	// Otherwise, date/time of the target DLL
+
+} IMAGE_DELAYLOAD_DESCRIPTOR_, * PIMAGE_DELAYLOAD_DESCRIPTOR_;
+
+typedef const IMAGE_DELAYLOAD_DESCRIPTOR_* PCIMAGE_DELAYLOAD_DESCRIPTOR_;
+
+
 #define RvaToAddr(type, base, offset) ((type)(DWORD_PTR(base) + DWORD_PTR(offset)))
 class vmsPeTools
 {
@@ -62,7 +85,7 @@ public:
 		FARPROC pfnOriginal = NULL;
 		bool replaced = false;
 
-		PIMAGE_DELAYLOAD_DESCRIPTOR importDesc = RvaToAddr (PIMAGE_DELAYLOAD_DESCRIPTOR, hTarget, impDir.VirtualAddress);
+		PIMAGE_DELAYLOAD_DESCRIPTOR_ importDesc = RvaToAddr (PIMAGE_DELAYLOAD_DESCRIPTOR_, hTarget, impDir.VirtualAddress);
 
 		for (;;++importDesc)
 		{

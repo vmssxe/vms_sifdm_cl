@@ -10,7 +10,7 @@ namespace zip_error {
 		public std::error_category
 	{
 	public:
-		virtual const char* name() const override
+		virtual const char* name() const noexcept override
 		{
 			return "zip";
 		}
@@ -20,7 +20,7 @@ namespace zip_error {
 			return "zip unknown error";
 		}
 
-		virtual std::error_condition default_error_condition (int ev) const override
+		virtual std::error_condition default_error_condition (int ev) const noexcept override
 		{
 			return std::error_condition (ev, *this);
 			/*switch (ev)

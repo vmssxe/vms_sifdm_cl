@@ -11,7 +11,7 @@ namespace windows_error {
 		public std::error_category
 	{
 	public:
-		virtual const char* name() const override
+		virtual const char* name() const noexcept override
 		{
 			return "windows";
 		}
@@ -21,7 +21,7 @@ namespace windows_error {
 			return "windows unknown error";
 		}
 
-		virtual std::error_condition default_error_condition (int ev) const override
+		virtual std::error_condition default_error_condition (int ev) const noexcept override
 		{
 			switch (ev)
 			{

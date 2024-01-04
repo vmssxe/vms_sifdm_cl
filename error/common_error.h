@@ -14,7 +14,7 @@ class category_impl :
 	public std::error_category
 {
 public:
-	virtual const char* name() const override
+	virtual const char* name() const noexcept override
 	{
 		return "common";
 	}
@@ -24,7 +24,7 @@ public:
 		return "common unknown error";
 	}
 
-	virtual std::error_condition default_error_condition (int ev) const override
+	virtual std::error_condition default_error_condition (int ev) const noexcept override
 	{
 		switch (ev)
 		{

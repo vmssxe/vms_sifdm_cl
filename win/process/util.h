@@ -15,6 +15,7 @@ inline HMODULE vmsGetThisModuleHandle ()
 	return vmsModuleFromAddress (vmsModuleFromAddress);
 }
 
+// returns HINSTANCE_ERROR in case the loaded module's handle can't be deteminated.
 inline HMODULE vmsLoadDllIntoProcess (HANDLE hProcess, LPCTSTR ptszDllName)
 {
 	HANDLE hThread = NULL;
@@ -98,6 +99,8 @@ inline HMODULE vmsLoadDllIntoProcess (HANDLE hProcess, LPCTSTR ptszDllName)
 				}
 			}
 			assert(hLibModule);
+			if (!hLibModule)
+				hLibModule = (HMODULE)HINSTANCE_ERROR;
 		}
 #endif
 

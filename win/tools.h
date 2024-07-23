@@ -128,7 +128,7 @@ inline void vmsOpenUrlInBrowser (LPCTSTR pszUrl)
 			return;
 	}
 
-	if (32 >= (int)ShellExecute (HWND_DESKTOP, _T ("open"), cl.getExe (), tstrArgs.c_str (), NULL, SW_SHOW))
+	if (32 >= (INT_PTR)ShellExecute (HWND_DESKTOP, _T ("open"), cl.getExe (), tstrArgs.c_str (), NULL, SW_SHOW))
 		goto _lErr;
 
 	return;

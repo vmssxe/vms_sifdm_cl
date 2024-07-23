@@ -257,7 +257,7 @@ private:
 			// cmd line image path can contain spaces and be specified without quotas...
 			// a simple check here, probably needs a better one...
 			if (s.length() >= imagePath.length() && 
-				!StrCmpNIW(s.c_str(), imagePath.c_str(), imagePath.length()))
+				!StrCmpNIW(s.c_str(), imagePath.c_str(), (int)imagePath.length()))
 			{
 				countTaken = imagePath.length();
 				return imagePath;
@@ -296,7 +296,7 @@ private:
 				}
 				else if (name.length() == phrase.length()+4) // phrase is the name without file suffix (e.g. ".exe")?
 				{
-					if (!StrCmpNIW(name.c_str(), phrase.c_str(), phrase.length()))
+					if (!StrCmpNIW(name.c_str(), phrase.c_str(), (int)phrase.length()))
 						return true;
 				}
 			}

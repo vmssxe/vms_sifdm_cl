@@ -2,6 +2,8 @@
 #include <Psapi.h>
 #include "../misc/vmsAvUtil.h"
 
+#pragma comment(lib, "Psapi.lib")
+
 inline HMODULE vmsModuleFromAddress (LPCVOID pv)
 {
 	MEMORY_BASIC_INFORMATION mbi;
@@ -19,7 +21,7 @@ inline HMODULE vmsLoadDllIntoProcess (HANDLE hProcess, LPCTSTR ptszDllName)
 
 	void* pLibRemote = NULL;   // The address (in the remote process) where 
 	// szLibPath will be copied to;
-	DWORD  hLibModule = 0;   // Base address of loaded module (==HMODULE);
+	HMODULE  hLibModule = 0; 
 	HMODULE hKernel32 = ::GetModuleHandle(_T ("Kernel32"));
 
 	// initialize szLibPath
@@ -63,8 +65,41 @@ inline HMODULE vmsLoadDllIntoProcess (HANDLE hProcess, LPCTSTR ptszDllName)
 	{
 		::WaitForSingleObject (hThread, INFINITE);
 
-		// Get handle of the loaded module
-		::GetExitCodeThread (hThread, &hLibModule);
+#ifndef _WIN64
+		{
+			// Get handle of the loaded module
+			DWORD dw = 0;
+			::GetExitCodeThread(hThread, &dw);
+			hLibModule = reinterpret_cast<HMODULE>(dw);
+		}
+#else
+		{
+			HMODULE hMods[1024];
+			DWORD cbNeeded;
+			if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded))
+			{
+				for (UINT i = 0; i < (cbNeeded / sizeof(HMODULE)); ++i)
+				{
+					TCHAR szModName[MAX_PATH] = _T("");
+
+					// Get the full path to the module's file.
+
+					if (GetModuleFileNameEx(hProcess, hMods[i], szModName,
+						sizeof(szModName) / sizeof(TCHAR)))
+					{
+						// Print the module name and handle value.
+
+						if (!_tcscmp(ptszDllName, szModName))
+						{
+							hLibModule = hMods[i];
+							break;
+						}
+					}
+				}
+			}
+			assert(hLibModule);
+		}
+#endif
 
 		// Clean up
 		::CloseHandle (hThread);
@@ -72,7 +107,7 @@ inline HMODULE vmsLoadDllIntoProcess (HANDLE hProcess, LPCTSTR ptszDllName)
 
 	::VirtualFreeEx (hProcess, pLibRemote, (_tcslen (ptszDllName)+1) * sizeof (TCHAR), MEM_RELEASE);
 
-	return (HMODULE)hLibModule;
+	return hLibModule;
 }
 
 inline BOOL vmsFreeDllFromProcess (HANDLE hProcess, HMODULE hDll)
